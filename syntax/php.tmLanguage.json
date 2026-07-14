@@ -1,0 +1,21 @@
+{
+  "name": "PHP",
+  "scopeName": "source.php",
+  "fileTypes": ["php", "php3", "php4", "php5", "phtml"],
+  "patterns": [
+    { "name": "comment.line.double-slash.php", "match": "//.*$" },
+    { "name": "comment.line.number-sign.php", "match": "#.*$" },
+    { "name": "comment.block.php", "begin": "/\\*", "end": "\\*/" },
+    { "name": "keyword.other.tag.php", "match": "<\\?(php|=)?|\\?>" },
+    { "name": "string.quoted.double.php", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.php", "match": "'(?:\\\\.|[^'\\\\])*'" },
+    { "name": "variable.other.php", "match": "\\$[A-Za-z_][A-Za-z0-9_]*" },
+    { "name": "constant.numeric.php", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?)\\b" },
+    { "name": "constant.language.php", "match": "(?i)\\b(true|false|null|__line__|__file__|__dir__|__function__|__class__|__method__|__namespace__)\\b" },
+    { "name": "keyword.control.php", "match": "(?i)\\b(if|else|elseif|endif|while|endwhile|do|for|endfor|foreach|endforeach|as|switch|endswitch|case|default|break|continue|return|function|fn|class|extends|implements|interface|trait|new|clone|echo|print|use|namespace|try|catch|finally|throw|require|require_once|include|include_once|global|instanceof|insteadof|yield|match|goto|declare|enum|readonly|list|and|or|xor|not)\\b" },
+    { "name": "storage.modifier.php", "match": "(?i)\\b(public|private|protected|static|const|abstract|final|var)\\b" },
+    { "name": "storage.type.php", "match": "(?i)\\b(int|float|string|bool|array|object|void|mixed|callable|iterable|never|self|parent|null)\\b" },
+    { "name": "support.function.builtin.php", "match": "(?i)\\b(isset|unset|empty|array_[a-z_]+|str_[a-z_]+|preg_[a-z_]+|count|strlen|substr|strpos|implode|explode|trim|sprintf|printf|var_dump|print_r|json_encode|json_decode|file_get_contents|file_put_contents|fopen|fclose|fread|fwrite|die|exit)\\b" },
+    { "name": "entity.name.function.call.php", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

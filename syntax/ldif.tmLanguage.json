@@ -1,0 +1,12 @@
+{
+  "name": "LDIF",
+  "scopeName": "source.ldif",
+  "fileTypes": ["ldif"],
+  "patterns": [
+    { "name": "comment.line.number-sign.ldif", "match": "^#.*$" },
+    { "name": "keyword.control.ldif", "match": "(?i)^(dn|version|changetype|add|delete|replace|newrdn|deleteoldrdn|newsuperior|control)(?=::?)" },
+    { "name": "support.type.attribute.ldif", "match": "^[A-Za-z][A-Za-z0-9-]*(;[A-Za-z0-9-]+)*(?=::?)" },
+    { "name": "keyword.operator.separator.ldif", "match": "^-$" },
+    { "name": "constant.numeric.ldif", "match": "\\b\\d+\\b" }
+  ]
+}

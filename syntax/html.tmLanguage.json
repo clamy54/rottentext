@@ -1,0 +1,14 @@
+{
+  "name": "HTML",
+  "scopeName": "text.html.basic",
+  "fileTypes": ["html", "htm"],
+  "patterns": [
+    { "name": "comment.block.html", "begin": "<!--", "end": "-->" },
+    { "name": "keyword.other.doctype.html", "match": "(?i)<!doctype[^>]*>" },
+    { "name": "string.quoted.double.html", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.html", "match": "'[^']*'" },
+    { "name": "entity.name.tag.html", "match": "(?i)</?[a-z][a-z0-9-]*|/?>" },
+    { "name": "support.type.attribute-name.html", "match": "\\b[a-zA-Z-]+(?==)" },
+    { "name": "constant.character.entity.html", "match": "&#?[a-zA-Z0-9]+;" }
+  ]
+}

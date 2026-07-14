@@ -1,0 +1,16 @@
+{
+  "name": "Conf",
+  "scopeName": "source.conf",
+  "fileTypes": ["conf", "cnf", "cf", "htaccess", "properties"],
+  "patterns": [
+    { "name": "comment.line.number-sign.conf", "match": "#.*$" },
+    { "name": "comment.line.semicolon.conf", "match": "^\\s*;.*$" },
+    { "name": "entity.name.tag.section.conf", "match": "^\\s*</?[A-Za-z][^>]*>" },
+    { "name": "string.quoted.double.conf", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.conf", "match": "'[^']*'" },
+    { "name": "variable.other.conf", "match": "\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?|%[A-Za-z{][A-Za-z0-9_}]*" },
+    { "name": "constant.language.conf", "match": "(?i)\\b(on|off|yes|no|true|false|none|all|enabled|disabled|any)\\b" },
+    { "name": "constant.numeric.conf", "match": "(?i)\\b\\d+(\\.\\d+)*[kmg]?b?\\b" },
+    { "name": "keyword.other.directive.conf", "match": "^\\s*[A-Za-z][A-Za-z0-9_-]*" }
+  ]
+}

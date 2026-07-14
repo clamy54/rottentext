@@ -1,0 +1,15 @@
+{
+  "name": "Bash",
+  "scopeName": "source.shell",
+  "fileTypes": ["sh", "bash", "zsh"],
+  "patterns": [
+    { "name": "comment.line.number-sign.shell", "match": "#.*$" },
+    { "name": "string.quoted.double.shell", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.shell", "match": "'[^']*'" },
+    { "name": "string.interpolated.backtick.shell", "match": "`(?:\\\\.|[^`\\\\])*`" },
+    { "name": "variable.other.shell", "match": "\\$(\\{[^}]*\\}|[A-Za-z_][A-Za-z0-9_]*|[0-9@#?*!$-])" },
+    { "name": "constant.numeric.shell", "match": "\\b\\d+\\b" },
+    { "name": "keyword.control.shell", "match": "\\b(if|then|else|elif|fi|for|while|until|do|done|case|esac|in|function|select|time|return|break|continue|shift|exit|trap|source|alias|eval|exec|set|unset|export|readonly|local|declare|typeset)\\b" },
+    { "name": "support.function.builtin.shell", "match": "\\b(echo|printf|cd|pwd|test|read|let|true|false|kill|wait|getopts|umask|ulimit|type|hash|command|builtin)\\b" }
+  ]
+}

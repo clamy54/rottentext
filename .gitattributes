@@ -1,0 +1,11 @@
+# Les scripts shell doivent garder des fins de ligne LF, sinon bash casse
+# sur Linux/macOS (#!/usr/bin/env bash\r introuvable).
+*.sh text eol=lf
+
+# Scripts Windows en CRLF
+*.ps1 text eol=crlf
+
+# Sources Pascal : LF, normalise entre machines
+*.pas text eol=lf
+*.lpr text eol=lf
+*.lpi text eol=lf

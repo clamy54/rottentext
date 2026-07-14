@@ -1,0 +1,17 @@
+{
+  "name": "JavaScript",
+  "scopeName": "source.js",
+  "fileTypes": ["js", "mjs", "cjs"],
+  "patterns": [
+    { "name": "comment.line.double-slash.js", "match": "//.*$" },
+    { "name": "comment.block.js", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.js", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.js", "match": "'(?:\\\\.|[^'\\\\])*'" },
+    { "name": "string.template.js", "begin": "`", "end": "`" },
+    { "name": "constant.numeric.js", "match": "(?i)\\b(0x[0-9a-f_]+n?|0b[01_]+n?|0o[0-7_]+n?|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?n?)\\b" },
+    { "name": "constant.language.js", "match": "\\b(true|false|null|undefined|NaN|Infinity|this|super|globalThis)\\b" },
+    { "name": "keyword.control.js", "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|try|catch|finally|throw|new|delete|typeof|instanceof|in|of|void|yield|await|async|function|class|extends|import|export|from|as|debugger|with)\\b" },
+    { "name": "storage.type.js", "match": "\\b(var|let|const|static|get|set)\\b" },
+    { "name": "entity.name.function.call.js", "match": "\\b[A-Za-z_$][A-Za-z0-9_$]*(?=\\s*\\()" }
+  ]
+}

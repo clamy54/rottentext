@@ -1,0 +1,19 @@
+{
+  "name": "Pascal",
+  "scopeName": "source.pascal",
+  "fileTypes": ["pas", "pp", "lpr", "dpr", "inc", "lfm", "dfm"],
+  "patterns": [
+    { "name": "comment.line.double-slash.pascal", "match": "//.*$" },
+    { "name": "keyword.directive.pascal", "begin": "\\{\\$", "end": "\\}" },
+    { "name": "comment.block.pascal", "begin": "\\{", "end": "\\}" },
+    { "name": "comment.block.pascal", "begin": "\\(\\*", "end": "\\*\\)" },
+    { "name": "string.quoted.single.pascal", "match": "'(?:''|[^'])*'" },
+    { "name": "constant.numeric.pascal", "match": "(?i)(\\$[0-9a-f]+|&[0-7]+|%[01]+|\\b\\d+(\\.\\d+)?([e][-+]?\\d+)?)" },
+    { "name": "constant.language.pascal", "match": "(?i)\\b(true|false|nil)\\b" },
+    { "name": "keyword.control.pascal", "match": "(?i)\\b(begin|end|if|then|else|case|of|while|do|repeat|until|for|to|downto|with|try|except|finally|raise|on|goto|exit|break|continue)\\b" },
+    { "name": "keyword.operator.word.pascal", "match": "(?i)\\b(and|or|not|xor|div|mod|shl|shr|in|is|as)\\b" },
+    { "name": "storage.type.pascal", "match": "(?i)\\b(integer|cardinal|byte|word|longint|longword|int64|qword|shortint|smallint|nativeint|boolean|bytebool|wordbool|longbool|char|widechar|ansichar|string|ansistring|widestring|unicodestring|shortstring|rawbytestring|single|double|extended|real|currency|comp|pointer|variant|olevariant|pchar)\\b" },
+    { "name": "storage.modifier.pascal", "match": "(?i)\\b(var|const|out|type|array|set|file|packed|of|absolute|external|forward|cdecl|stdcall|register|assembler|inline|override|virtual|abstract|overload|reintroduce|sealed|static|dynamic|message|deprecated|experimental|platform|default|read|write|stored|index|nodefault|implements)\\b" },
+    { "name": "keyword.other.pascal", "match": "(?i)\\b(program|library|unit|uses|interface|implementation|initialization|finalization|class|object|record|interface|dispinterface|property|published|private|protected|public|strict|inherited|procedure|function|constructor|destructor|operator|label|resourcestring|threadvar|generic|specialize|helper)\\b" }
+  ]
+}

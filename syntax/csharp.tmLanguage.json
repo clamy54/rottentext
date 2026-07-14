@@ -1,0 +1,18 @@
+{
+  "name": "C#",
+  "scopeName": "source.cs",
+  "fileTypes": ["cs"],
+  "patterns": [
+    { "name": "comment.line.double-slash.cs", "match": "//.*$" },
+    { "name": "comment.block.cs", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.verbatim.cs", "match": "@\"(?:\"\"|[^\"])*\"" },
+    { "name": "string.quoted.double.cs", "match": "\\$?\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.cs", "match": "'(?:\\\\.|[^'\\\\])'" },
+    { "name": "constant.numeric.cs", "match": "(?i)\\b(0x[0-9a-f_]+u?l?|0b[01_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?[fdmul]{0,2})\\b" },
+    { "name": "constant.language.cs", "match": "\\b(true|false|null|this|base)\\b" },
+    { "name": "keyword.control.cs", "match": "\\b(if|else|switch|case|default|for|foreach|while|do|break|continue|return|yield|goto|try|catch|finally|throw|using|lock|checked|unchecked|fixed|unsafe|await|async|when|in|out|ref|params|is|as|new|typeof|nameof|sizeof|stackalloc)\\b" },
+    { "name": "storage.type.cs", "match": "\\b(bool|byte|sbyte|char|decimal|double|float|int|uint|nint|nuint|long|ulong|short|ushort|string|object|void|var|dynamic)\\b" },
+    { "name": "storage.modifier.cs", "match": "\\b(class|struct|interface|enum|record|namespace|public|private|protected|internal|static|readonly|const|sealed|abstract|virtual|override|partial|delegate|event|get|set|init|add|remove|where|global|extern|implicit|explicit|operator|volatile|required)\\b" },
+    { "name": "entity.name.function.call.cs", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

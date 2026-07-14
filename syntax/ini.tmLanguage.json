@@ -1,0 +1,15 @@
+{
+  "name": "INI",
+  "scopeName": "source.ini",
+  "fileTypes": ["ini", "cfg", "inf", "reg", "editorconfig", "gitconfig"],
+  "patterns": [
+    { "name": "comment.line.semicolon.ini", "match": "^\\s*;.*$" },
+    { "name": "comment.line.number-sign.ini", "match": "^\\s*#.*$" },
+    { "name": "entity.name.tag.section.ini", "match": "^\\s*\\[[^\\]]*\\]" },
+    { "name": "support.type.key.ini", "match": "^\\s*[A-Za-z0-9_.  -]*[A-Za-z0-9_.-](?=\\s*=)" },
+    { "name": "string.quoted.double.ini", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.ini", "match": "'[^']*'" },
+    { "name": "constant.language.ini", "match": "(?i)\\b(true|false|yes|no|on|off|none|null)\\b" },
+    { "name": "constant.numeric.ini", "match": "(?i)\\b(0x[0-9a-f]+|\\d+(\\.\\d+)?)\\b" }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Markdown",
+  "scopeName": "text.html.markdown",
+  "fileTypes": ["md", "markdown"],
+  "patterns": [
+    { "name": "string.fenced-code.markdown", "begin": "^```", "end": "^```\\s*$" },
+    { "name": "keyword.control.heading.markdown", "match": "^#{1,6}\\s.*$" },
+    { "name": "comment.blockquote.markdown", "match": "^\\s*>.*$" },
+    { "name": "string.inline-code.markdown", "match": "`[^`]+`" },
+    { "name": "entity.name.function.link.markdown", "match": "!?\\[[^\\]]*\\]\\([^)]*\\)" },
+    { "name": "constant.other.bold.markdown", "match": "\\*\\*[^*]+\\*\\*|__[^_]+__" },
+    { "name": "storage.italic.markdown", "match": "\\*[^*\\s][^*]*\\*|_[^_\\s][^_]*_" },
+    { "name": "keyword.operator.list.markdown", "match": "^\\s*([-*+]|\\d+\\.)\\s" },
+    { "name": "keyword.other.rule.markdown", "match": "^(---+|\\*\\*\\*+|___+)\\s*$" }
+  ]
+}

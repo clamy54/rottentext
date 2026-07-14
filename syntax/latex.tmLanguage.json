@@ -1,0 +1,13 @@
+{
+  "name": "LaTeX",
+  "scopeName": "text.tex.latex",
+  "fileTypes": ["tex", "sty", "cls", "bib"],
+  "patterns": [
+    { "name": "comment.line.percentage.latex", "match": "%.*$" },
+    { "name": "string.other.math.latex", "match": "\\$\\$?[^$]*\\$\\$?" },
+    { "name": "keyword.control.latex", "match": "\\\\[a-zA-Z@]+\\*?" },
+    { "name": "constant.character.escape.latex", "match": "\\\\[^a-zA-Z@]" },
+    { "name": "constant.numeric.latex", "match": "\\b\\d+(\\.\\d+)?(pt|mm|cm|in|ex|em|mu|sp|bp|dd|pc)?\\b" },
+    { "name": "variable.parameter.latex", "match": "#\\d" }
+  ]
+}

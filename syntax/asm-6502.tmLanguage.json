@@ -1,0 +1,15 @@
+{
+  "name": "Assembly 6502",
+  "scopeName": "source.asm.6502",
+  "fileTypes": ["a65", "s65", "asm65"],
+  "patterns": [
+    { "name": "comment.line.semicolon.6502", "match": ";.*$" },
+    { "name": "string.quoted.double.6502", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.6502", "match": "'[^']*'" },
+    { "name": "keyword.other.directive.6502", "match": "(?i)(^\\s*\\.[a-z_][a-z0-9_]*|\\b(org|equ|db|dw|byte|word|dbyte|res|include|incbin|macro|endm|endmacro|proc|endproc|segment|scope|endscope|align|fill|if|else|endif|repeat|endrepeat)\\b)" },
+    { "name": "keyword.control.mnemonic.6502", "match": "(?i)\\b(adc|and|asl|bcc|bcs|beq|bit|bmi|bne|bpl|brk|bvc|bvs|clc|cld|cli|clv|cmp|cpx|cpy|dec|dex|dey|eor|inc|inx|iny|jmp|jsr|lda|ldx|ldy|lsr|nop|ora|pha|php|pla|plp|rol|ror|rti|rts|sbc|sec|sed|sei|sta|stx|sty|tax|tay|tsx|txa|txs|tya|bra|phx|phy|plx|ply|stz|trb|tsb)\\b" },
+    { "name": "entity.name.function.label.6502", "match": "^[A-Za-z_@.][A-Za-z0-9_@.]*:?" },
+    { "name": "variable.register.6502", "match": "(?i)\\b[axy]\\b" },
+    { "name": "constant.numeric.6502", "match": "(?i)(#?\\$[0-9a-f]+|#?%[01]+|#\\d+|\\b\\d+\\b)" }
+  ]
+}

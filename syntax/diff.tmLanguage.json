@@ -1,0 +1,12 @@
+{
+  "name": "Diff",
+  "scopeName": "source.diff",
+  "fileTypes": ["diff", "patch"],
+  "patterns": [
+    { "name": "keyword.other.header.diff", "match": "^(diff |index |=== |--- |\\+\\+\\+ |\\*\\*\\* ).*$" },
+    { "name": "constant.numeric.hunk.diff", "match": "^@@[^@]*@@.*$" },
+    { "name": "string.inserted.diff", "match": "^\\+.*$" },
+    { "name": "invalid.deleted.diff", "match": "^-.*$" },
+    { "name": "comment.line.only.diff", "match": "^Only in .*$" }
+  ]
+}

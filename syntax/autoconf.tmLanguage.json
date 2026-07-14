@@ -1,0 +1,18 @@
+{
+  "name": "Autoconf",
+  "scopeName": "source.autoconf",
+  "fileTypes": ["ac", "m4"],
+  "patterns": [
+    { "name": "comment.line.dnl.autoconf", "match": "(?i)\\bdnl\\b.*$" },
+    { "name": "comment.line.number-sign.autoconf", "match": "#.*$" },
+    { "name": "string.quoted.double.autoconf", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.autoconf", "match": "'[^']*'" },
+    { "name": "support.function.macro.autoconf", "match": "\\b(AC|AM|AS|AH|AX|AU|LT|PKG|GLIB|GTK|BASH)_[A-Z0-9_]+\\b" },
+    { "name": "support.function.m4.autoconf", "match": "\\bm4_[a-zA-Z0-9_]+\\b" },
+    { "name": "keyword.other.m4.autoconf", "match": "\\b(define|undefine|defn|pushdef|popdef|ifelse|ifdef|include|sinclude|changequote|changecom|divert|undivert|shift|builtin|indir|patsubst|regexp|format|incr|decr|esyscmd|syscmd|translit|len|index|substr|maketemp|errprint)\\b" },
+    { "name": "keyword.control.shell.autoconf", "match": "\\b(if|then|else|elif|fi|case|esac|for|while|until|do|done|in|function|return|test|exit|break|continue)\\b" },
+    { "name": "variable.other.substitution.autoconf", "match": "@[A-Za-z_][A-Za-z0-9_]*@" },
+    { "name": "variable.other.autoconf", "match": "\\$[A-Za-z_][A-Za-z0-9_]*|\\$\\{[^}]*\\}|\\$[0-9@*#?]" },
+    { "name": "constant.numeric.autoconf", "match": "\\b\\d+\\b" }
+  ]
+}

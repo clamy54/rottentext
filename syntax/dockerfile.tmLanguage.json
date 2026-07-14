@@ -1,0 +1,14 @@
+{
+  "name": "Dockerfile",
+  "scopeName": "source.dockerfile",
+  "fileTypes": ["dockerfile"],
+  "patterns": [
+    { "name": "comment.line.number-sign.dockerfile", "match": "#.*$" },
+    { "name": "keyword.control.dockerfile", "match": "(?i)^\\s*(from|run|cmd|label|maintainer|expose|env|add|copy|entrypoint|volume|user|workdir|arg|onbuild|stopsignal|healthcheck|shell)\\b" },
+    { "name": "keyword.operator.as.dockerfile", "match": "(?i)\\b(as)\\b" },
+    { "name": "string.quoted.double.dockerfile", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.dockerfile", "match": "'[^']*'" },
+    { "name": "variable.other.dockerfile", "match": "\\$(\\{[^}]*\\}|[A-Za-z_][A-Za-z0-9_]*)" },
+    { "name": "constant.numeric.dockerfile", "match": "\\b\\d+(\\.\\d+)*\\b" }
+  ]
+}

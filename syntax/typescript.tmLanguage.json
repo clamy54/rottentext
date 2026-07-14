@@ -1,0 +1,17 @@
+{
+  "name": "TypeScript",
+  "scopeName": "source.ts",
+  "fileTypes": ["ts", "tsx", "mts", "cts"],
+  "patterns": [
+    { "name": "comment.line.double-slash.ts", "match": "//.*$" },
+    { "name": "comment.block.ts", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.ts", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.ts", "match": "'(?:\\\\.|[^'\\\\])*'" },
+    { "name": "string.template.ts", "begin": "`", "end": "`" },
+    { "name": "constant.numeric.ts", "match": "(?i)\\b(0x[0-9a-f_]+n?|0b[01_]+n?|0o[0-7_]+n?|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?n?)\\b" },
+    { "name": "constant.language.ts", "match": "\\b(true|false|null|undefined|NaN|Infinity|this|super|globalThis)\\b" },
+    { "name": "keyword.control.ts", "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|try|catch|finally|throw|new|delete|typeof|instanceof|in|of|void|yield|await|async|function|class|extends|implements|import|export|from|as|satisfies|keyof|infer|is|asserts|declare|namespace|module|abstract|override|debugger)\\b" },
+    { "name": "storage.type.ts", "match": "\\b(var|let|const|static|get|set|readonly|type|interface|enum|public|private|protected|any|unknown|never|void|string|number|boolean|bigint|symbol|object)\\b" },
+    { "name": "entity.name.function.call.ts", "match": "\\b[A-Za-z_$][A-Za-z0-9_$]*(?=\\s*\\()" }
+  ]
+}

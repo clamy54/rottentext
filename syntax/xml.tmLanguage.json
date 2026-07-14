@@ -1,0 +1,15 @@
+{
+  "name": "XML",
+  "scopeName": "text.xml",
+  "fileTypes": ["xml", "xsd", "xsl", "xslt", "svg", "plist", "lpi", "lpk", "csproj", "wsdl", "rss", "atom"],
+  "patterns": [
+    { "name": "comment.block.xml", "begin": "<!--", "end": "-->" },
+    { "name": "string.unparsed.cdata.xml", "begin": "<!\\[CDATA\\[", "end": "\\]\\]>" },
+    { "name": "keyword.other.doctype.xml", "match": "<[!?][A-Za-z][^>]*>?" },
+    { "name": "string.quoted.double.xml", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.xml", "match": "'[^']*'" },
+    { "name": "entity.name.tag.xml", "match": "</?[A-Za-z_][A-Za-z0-9_.:-]*|/?>" },
+    { "name": "support.type.attribute-name.xml", "match": "\\b[A-Za-z_][A-Za-z0-9_.:-]*(?==)" },
+    { "name": "constant.character.entity.xml", "match": "&#?[a-zA-Z0-9]+;" }
+  ]
+}

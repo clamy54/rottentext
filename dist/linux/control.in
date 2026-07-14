@@ -1,0 +1,19 @@
+Package: rottentext
+Version: @VERSION@
+Section: editors
+Priority: optional
+Architecture: @ARCH@
+Maintainer: Cyril Lamy <cyril.lamy@gmail.com>
+Depends: @DEPENDS@
+Description: RottenText - a text editor with a sysadmin toolbox
+ A text editor written in Free Pascal / Lazarus: tabs, split view, syntax
+ highlighting, minimap, multiple cursors, macros, a virtual hex view for
+ binaries and large files, sessions and themes.
+ .
+ Its differentiator is an integrated ops toolbox (Tools menu): hashes,
+ .htpasswd, LDAP/LDIF, encodings and escaping, HMAC, JWT, X.509, mail trace,
+ CIDR, cron, logs, YAML/JSON/TOML/INI, Kubernetes, Helm, Docker/Compose,
+ Podman Quadlet, Terraform - all in-process, no external dependency.
+ .
+ Free software under GPL v2. Embeds the Monaspace fonts (SIL OFL 1.1); see
+ /usr/share/doc/rottentext/LICENSE_THIRD_PARTIES.md

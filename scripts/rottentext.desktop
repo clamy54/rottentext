@@ -1,0 +1,20 @@
+# Lanceur Linux (M-mono-instance): un fichier ouvert depuis le gestionnaire
+# rejoint l'instance deja lancee via IPC, sinon une fenetre s'ouvre.
+# Installation: scripts/install-desktop.sh (pointe sur le binaire du dossier de
+# build, pose l'icone dans hicolor, rafraichit les caches).
+# SANS ce lanceur installe, GNOME (>= 45) affiche une icone GENERIQUE dans le
+# dock et l'alt-tab: une fenetre sans .desktop correspondant est une
+# "window-backed app" et son _NET_WM_ICON n'est PAS utilise. C'est StartupWMClass
+# qui relie la fenetre (WM_CLASS=RottenText) a ce fichier. Valide sur GNOME 50.
+[Desktop Entry]
+Type=Application
+Name=RottenText
+Comment=A rotten editor for rotten files and rotten days.
+Exec=RottenText %f
+TryExec=RottenText
+Icon=rottentext
+Terminal=false
+# sans ca le shell ne relie pas la fenetre au lanceur: icone generique dans la barre
+StartupWMClass=RottenText
+Categories=Utility;TextEditor;Development;
+MimeType=text/plain;application/json;application/xml;text/x-log;

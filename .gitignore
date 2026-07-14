@@ -1,0 +1,30 @@
+# Lazarus / FPC build artifacts
+lib/
+backup/
+*.exe
+/RottenText
+/RottenText.app/
+*.o
+*.ppu
+*.a
+*.compiled
+*.res
+*.lps
+*.bak
+*.or
+*.dbg
+.DS_Store
+
+# index GNU GLOBAL
+GPATH
+GRTAGS
+GTAGS
+
+# captures generees par scripts/screenshot.ps1
+scripts/*.png
+
+# Packaging (dist/): sorties de build, pas versionnees
+dist/*/build/
+dist/windows/output/
+# regenere depuis LICENSE_THIRD_PARTIES.md a chaque compilation de l'installeur
+dist/windows/third-party.txt

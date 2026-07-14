@@ -1,0 +1,18 @@
+{
+  "name": "PowerShell",
+  "scopeName": "source.powershell",
+  "fileTypes": ["ps1", "psm1", "psd1"],
+  "patterns": [
+    { "name": "comment.block.powershell", "begin": "<#", "end": "#>" },
+    { "name": "comment.line.number-sign.powershell", "match": "#.*$" },
+    { "name": "string.quoted.double.powershell", "match": "\"(?:`.|[^\"`])*\"" },
+    { "name": "string.quoted.single.powershell", "match": "'[^']*'" },
+    { "name": "variable.other.powershell", "match": "\\$(\\{[^}]*\\}|[A-Za-z_][A-Za-z0-9_:]*|[?^_$])" },
+    { "name": "constant.numeric.powershell", "match": "(?i)\\b(0x[0-9a-f]+|\\d+(\\.\\d+)?(e[-+]?\\d+)?(kb|mb|gb|tb|pb)?)\\b" },
+    { "name": "constant.language.powershell", "match": "(?i)\\$(true|false|null)\\b" },
+    { "name": "keyword.operator.comparison.powershell", "match": "(?i)-(eq|ne|gt|lt|ge|le|like|notlike|match|notmatch|contains|notcontains|in|notin|and|or|not|xor|replace|join|split|is|isnot|as|band|bor|bxor|bnot|shl|shr|f)\\b" },
+    { "name": "keyword.control.powershell", "match": "(?i)\\b(if|elseif|else|switch|for|foreach|while|do|until|break|continue|return|function|filter|param|begin|process|end|try|catch|finally|throw|trap|class|enum|using|in|hidden|static|exit)\\b" },
+    { "name": "support.function.cmdlet.powershell", "match": "\\b[A-Z][a-z]+-[A-Za-z][A-Za-z0-9]*\\b" },
+    { "name": "entity.name.type.powershell", "match": "\\[[A-Za-z][A-Za-z0-9_.\\[\\]]*\\]" }
+  ]
+}

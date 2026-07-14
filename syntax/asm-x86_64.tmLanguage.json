@@ -1,0 +1,16 @@
+{
+  "name": "Assembly x86-64",
+  "scopeName": "source.asm.x86_64",
+  "fileTypes": ["asm", "nasm"],
+  "patterns": [
+    { "name": "comment.line.semicolon.asm", "match": ";.*$" },
+    { "name": "comment.line.number-sign.asm", "match": "#.*$" },
+    { "name": "string.quoted.double.asm", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.asm", "match": "'[^']*'" },
+    { "name": "keyword.other.directive.asm", "match": "(?i)(^\\s*\\.[a-z_][a-z0-9_]*|%[a-z]+\\b|\\b(section|segment|global|extern|bits|use16|use32|use64|org|align|db|dw|dd|dq|dt|do|resb|resw|resd|resq|equ|times|struc|endstruc|istruc|iend|incbin|default|rel)\\b)" },
+    { "name": "entity.name.function.label.asm", "match": "^\\s*[A-Za-z_.$][A-Za-z0-9_.$]*:" },
+    { "name": "variable.register.asm", "match": "(?i)\\b(r[a-d]x|r[sd]i|r[sb]p|r(8|9|1[0-5])[dwb]?|e[a-d]x|e[sd]i|e[sb]p|[a-d][xhl]|[sd]il|[sb]pl|si|di|sp|bp|xmm\\d{1,2}|ymm\\d{1,2}|zmm\\d{1,2}|st\\d|mm\\d|cr[0-8]|dr[0-7]|rip|eip|cs|ds|es|fs|gs|ss|[re]?flags)\\b" },
+    { "name": "constant.numeric.asm", "match": "(?i)\\b(0x[0-9a-f]+|[0-9][0-9a-f]*h|0b[01]+|[01]+b|\\d+)\\b" },
+    { "name": "keyword.control.mnemonic.asm", "match": "(?i)\\b(mov|movzx|movsx|movsxd|lea|add|sub|adc|sbb|mul|imul|div|idiv|inc|dec|neg|not|and|or|xor|shl|shr|sal|sar|rol|ror|rcl|rcr|cmp|test|jmp|call|ret|retn|retf|push|pop|pushf|popf|pusha|popa|nop|int|int3|syscall|sysenter|sysret|iret|enter|leave|xchg|cmpxchg|xadd|bt|bts|btr|btc|bsf|bsr|popcnt|lzcnt|tzcnt|hlt|cpuid|rdtsc|rdmsr|wrmsr|in|out|cli|sti|cld|std|clc|stc|cmc|lahf|sahf|cdq|cqo|cbw|cwd|cwde|cdqe|movs[bwdq]|stos[bwdq]|lods[bwdq]|scas[bwdq]|cmps[bwdq]|rep|repe|repne|repz|repnz|loop|loope|loopne|j[a-z]{1,4}|set[a-z]{1,4}|cmov[a-z]{1,4}|f[a-z]{2,8}|v?add[ps][sd]|v?sub[ps][sd]|v?mul[ps][sd]|v?div[ps][sd]|v?mov[au]p[sd]|v?movs[sd]|v?xorp[sd]|v?pxor|v?sqrt[ps][sd]|cvt[a-z2]{4,8})\\b" }
+  ]
+}

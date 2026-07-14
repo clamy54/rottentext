@@ -1,0 +1,19 @@
+{
+  "name": "C++",
+  "scopeName": "source.cpp",
+  "fileTypes": ["cpp", "hpp", "cc", "cxx", "hh", "hxx"],
+  "patterns": [
+    { "name": "comment.line.double-slash.cpp", "match": "//.*$" },
+    { "name": "comment.block.cpp", "begin": "/\\*", "end": "\\*/" },
+    { "name": "keyword.other.directive.cpp", "match": "^\\s*#\\s*[a-z]+" },
+    { "name": "string.quoted.double.cpp", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.cpp", "match": "'(?:\\\\.|[^'\\\\])'" },
+    { "name": "constant.numeric.cpp", "match": "(?i)\\b(0x[0-9a-f']+u?l{0,2}|0b[01']+|\\d[\\d']*(\\.[\\d']+)?(e[-+]?\\d+)?[ful]{0,3})\\b" },
+    { "name": "constant.language.cpp", "match": "\\b(nullptr|NULL|true|false|this)\\b" },
+    { "name": "keyword.control.cpp", "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|goto|sizeof|new|delete|try|catch|throw|co_await|co_return|co_yield|static_assert)\\b" },
+    { "name": "keyword.operator.cast.cpp", "match": "\\b(static_cast|dynamic_cast|reinterpret_cast|const_cast|decltype|typeid|noexcept|alignof|alignas)\\b" },
+    { "name": "storage.type.cpp", "match": "\\b(void|char|char8_t|char16_t|char32_t|wchar_t|short|int|long|float|double|signed|unsigned|bool|auto|size_t|ssize_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|intptr_t|uintptr_t|ptrdiff_t)\\b" },
+    { "name": "storage.modifier.cpp", "match": "\\b(class|struct|union|enum|typedef|typename|template|namespace|using|public|private|protected|friend|virtual|override|final|static|extern|const|constexpr|consteval|constinit|volatile|mutable|inline|explicit|operator|concept|requires|export)\\b" },
+    { "name": "entity.name.function.call.cpp", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

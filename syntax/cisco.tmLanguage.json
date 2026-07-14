@@ -1,0 +1,21 @@
+{
+  "name": "Cisco IOS",
+  "scopeName": "source.cisco",
+  "fileTypes": ["ios", "cisco"],
+  "patterns": [
+    { "name": "comment.line.exclamation.cisco", "match": "^\\s*!.*$" },
+    { "name": "comment.line.remark.cisco", "match": "(?i)\\bremark\\b.*$" },
+    { "name": "comment.line.description.cisco", "match": "(?i)^\\s*description\\b.*$" },
+    { "name": "string.quoted.double.cisco", "match": "\"[^\"]*\"" },
+    { "name": "keyword.control.action.cisco", "match": "(?i)\\b(permit|deny)\\b" },
+    { "name": "keyword.other.acl.cisco", "match": "(?i)\\b(access-list|access-group|access-class|mac access-list|ip access-list|ipv6 access-list|extended|standard|dynamic|reflect|evaluate|object-group)\\b" },
+    { "name": "keyword.other.cisco", "match": "(?i)\\b(interface|router|hostname|enable|password|secret|username|shutdown|switchport|vlan|spanning-tree|line|logging|ntp|snmp-server|crypto|route-map|neighbor|network|redistribute|version|service|boot|banner|configure|terminal|address|route|default-gateway|name-server|domain-name|clock|aaa|tacacs|radius|vrf|mtu|duplex|speed|channel-group|standby|hsrp|vrrp|encapsulation|trunk|native)\\b" },
+    { "name": "keyword.control.negate.cisco", "match": "(?i)^\\s*no\\b" },
+    { "name": "keyword.control.end.cisco", "match": "(?i)\\b(end|exit)\\b" },
+    { "name": "keyword.operator.match.cisco", "match": "(?i)\\b(eq|neq|gt|lt|range|host|any|established|log|log-input|wildcard|out|in)\\b" },
+    { "name": "storage.type.protocol.cisco", "match": "(?i)\\b(tcp|udp|icmp|icmpv6|igmp|gre|esp|ahp|ospf|eigrp|pim|nos|ip|ipv6|ipinip)\\b" },
+    { "name": "constant.language.port.cisco", "match": "(?i)\\b(www|http|https|domain|ftp|ftp-data|ssh|telnet|smtp|pop3|imap|snmp|snmptrap|bootps|bootpc|tftp|ntp|syslog|bgp|ldap|nntp|isakmp|non500-isakmp)\\b" },
+    { "name": "constant.numeric.ip.cisco", "match": "\\b\\d{1,3}(\\.\\d{1,3}){3}\\b" },
+    { "name": "constant.numeric.cisco", "match": "\\b\\d+\\b" }
+  ]
+}

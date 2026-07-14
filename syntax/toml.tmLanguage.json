@@ -1,0 +1,16 @@
+{
+  "name": "TOML",
+  "scopeName": "source.toml",
+  "fileTypes": ["toml"],
+  "patterns": [
+    { "name": "comment.line.number-sign.toml", "match": "#.*$" },
+    { "name": "entity.name.tag.table.toml", "match": "^\\s*\\[\\[?[^\\]]*\\]\\]?" },
+    { "name": "support.type.key.toml", "match": "^\\s*[A-Za-z0-9_.-]+(?=\\s*=)" },
+    { "name": "string.quoted.triple.toml", "begin": "\"\"\"", "end": "\"\"\"" },
+    { "name": "string.quoted.double.toml", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.toml", "match": "'[^']*'" },
+    { "name": "constant.numeric.date.toml", "match": "\\b\\d{4}-\\d{2}-\\d{2}([T ]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[-+]\\d{2}:\\d{2})?)?\\b" },
+    { "name": "constant.numeric.toml", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|0o[0-7_]+|[-+]?\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?|[-+]?(inf|nan))\\b" },
+    { "name": "constant.language.toml", "match": "\\b(true|false)\\b" }
+  ]
+}

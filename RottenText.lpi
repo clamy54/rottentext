@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="RottenText"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+      <Icon Value="0"/>
+      <Resources Count="21">
+        <Resource_0 FileName="fonts/MonaspaceNeonFrozen-Regular.ttf" Type="RCDATA" ResourceName="NEON_REGULAR"/>
+        <Resource_1 FileName="fonts/MonaspaceNeonFrozen-Bold.ttf" Type="RCDATA" ResourceName="NEON_BOLD"/>
+        <Resource_2 FileName="fonts/MonaspaceNeonFrozen-Italic.ttf" Type="RCDATA" ResourceName="NEON_ITALIC"/>
+        <Resource_3 FileName="fonts/MonaspaceNeonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="NEON_BOLDITALIC"/>
+        <Resource_4 FileName="fonts/MonaspaceArgonFrozen-Regular.ttf" Type="RCDATA" ResourceName="ARGON_REGULAR"/>
+        <Resource_5 FileName="fonts/MonaspaceArgonFrozen-Bold.ttf" Type="RCDATA" ResourceName="ARGON_BOLD"/>
+        <Resource_6 FileName="fonts/MonaspaceArgonFrozen-Italic.ttf" Type="RCDATA" ResourceName="ARGON_ITALIC"/>
+        <Resource_7 FileName="fonts/MonaspaceArgonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="ARGON_BOLDITALIC"/>
+        <Resource_8 FileName="fonts/MonaspaceXenonFrozen-Regular.ttf" Type="RCDATA" ResourceName="XENON_REGULAR"/>
+        <Resource_9 FileName="fonts/MonaspaceXenonFrozen-Bold.ttf" Type="RCDATA" ResourceName="XENON_BOLD"/>
+        <Resource_10 FileName="fonts/MonaspaceXenonFrozen-Italic.ttf" Type="RCDATA" ResourceName="XENON_ITALIC"/>
+        <Resource_11 FileName="fonts/MonaspaceXenonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="XENON_BOLDITALIC"/>
+        <Resource_12 FileName="fonts/MonaspaceRadonFrozen-Regular.ttf" Type="RCDATA" ResourceName="RADON_REGULAR"/>
+        <Resource_13 FileName="fonts/MonaspaceRadonFrozen-Bold.ttf" Type="RCDATA" ResourceName="RADON_BOLD"/>
+        <Resource_14 FileName="fonts/MonaspaceRadonFrozen-Italic.ttf" Type="RCDATA" ResourceName="RADON_ITALIC"/>
+        <Resource_15 FileName="fonts/MonaspaceRadonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="RADON_BOLDITALIC"/>
+        <Resource_16 FileName="fonts/MonaspaceKryptonFrozen-Regular.ttf" Type="RCDATA" ResourceName="KRYPTON_REGULAR"/>
+        <Resource_17 FileName="fonts/MonaspaceKryptonFrozen-Bold.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLD"/>
+        <Resource_18 FileName="fonts/MonaspaceKryptonFrozen-Italic.ttf" Type="RCDATA" ResourceName="KRYPTON_ITALIC"/>
+        <Resource_19 FileName="fonts/MonaspaceKryptonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLDITALIC"/>
+        <Resource_20 FileName="icons/rottentext-256.png" Type="RCDATA" ResourceName="APPICON_PNG"/>
+      </Resources>
+    </General>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+      <Item Name="Release">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="RottenText"/>
+          </Target>
+          <SearchPaths>
+            <IncludeFiles Value="src"/>
+            <OtherUnitFiles Value="src"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)-release"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <SmartLinkUnit Value="True"/>
+            <Optimizations>
+              <OptimizationLevel Value="2"/>
+            </Optimizations>
+          </CodeGeneration>
+          <Linking>
+            <Debugging>
+              <GenerateDebugInfo Value="False"/>
+              <StripSymbols Value="True"/>
+            </Debugging>
+            <LinkSmart Value="True"/>
+            <Options>
+              <Win32>
+                <GraphicApplication Value="True"/>
+              </Win32>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="Printer4Lazarus"/>
+      </Item>
+      <Item>
+        <PackageName Value="SynEdit"/>
+      </Item>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+    </RequiredPackages>
+    <Units>
+      <Unit>
+        <Filename Value="RottenText.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uMain.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uTheme.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uEditorView.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uDocument.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uDocumentManager.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uTabBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uActions.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uMenuBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uFontEmbed.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uStatusBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uMinimap.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uScrollbar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uHighlight.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uWrapView.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uFindBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uSideBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uPrint.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uFuzzy.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uPalette.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target>
+      <Filename Value="RottenText"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="src;$(ProjOutDir)"/>
+      <OtherUnitFiles Value="src"/>
+      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
+      </Debugging>
+      <Options>
+        <Win32>
+          <GraphicApplication Value="True"/>
+        </Win32>
+      </Options>
+    </Linking>
+  </CompilerOptions>
+</CONFIG>

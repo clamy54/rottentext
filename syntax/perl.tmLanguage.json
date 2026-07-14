@@ -1,0 +1,14 @@
+{
+  "name": "Perl",
+  "scopeName": "source.perl",
+  "fileTypes": ["pl", "pm", "t"],
+  "patterns": [
+    { "name": "comment.line.number-sign.perl", "match": "#.*$" },
+    { "name": "string.quoted.double.perl", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.perl", "match": "'(?:\\\\.|[^'\\\\])*'" },
+    { "name": "variable.other.perl", "match": "[$@%][{]?[A-Za-z_][A-Za-z0-9_]*[}]?|\\$[0-9_!@/\\\\,;.<>&`'+]" },
+    { "name": "constant.numeric.perl", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?)\\b" },
+    { "name": "keyword.control.perl", "match": "\\b(if|elsif|else|unless|while|until|for|foreach|do|last|next|redo|return|sub|my|our|local|state|use|no|require|package|bless|eval|die|warn|and|or|not|xor|eq|ne|lt|gt|le|ge|cmp|defined|undef|exists|delete|wantarray|ref|goto)\\b" },
+    { "name": "support.function.builtin.perl", "match": "\\b(print|printf|say|open|close|read|write|chomp|chop|chomp|split|join|push|pop|shift|unshift|splice|keys|values|each|sort|reverse|grep|map|scalar|length|substr|index|rindex|uc|lc|ucfirst|lcfirst|sprintf|die|exit|sleep|localtime|time)\\b" }
+  ]
+}

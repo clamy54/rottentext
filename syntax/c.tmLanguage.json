@@ -1,0 +1,18 @@
+{
+  "name": "C",
+  "scopeName": "source.c",
+  "fileTypes": ["c", "h"],
+  "patterns": [
+    { "name": "comment.line.double-slash.c", "match": "//.*$" },
+    { "name": "comment.block.c", "begin": "/\\*", "end": "\\*/" },
+    { "name": "keyword.other.directive.c", "match": "^\\s*#\\s*[a-z]+" },
+    { "name": "string.quoted.double.c", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.c", "match": "'(?:\\\\.|[^'\\\\])'" },
+    { "name": "constant.numeric.c", "match": "(?i)\\b(0x[0-9a-f]+u?l{0,2}|\\d+(\\.\\d+)?(e[-+]?\\d+)?[ful]{0,3})\\b" },
+    { "name": "constant.language.c", "match": "\\b(NULL|true|false|TRUE|FALSE)\\b" },
+    { "name": "keyword.control.c", "match": "\\b(if|else|for|while|do|switch|case|default|break|continue|return|goto|sizeof)\\b" },
+    { "name": "storage.type.c", "match": "\\b(void|char|short|int|long|float|double|signed|unsigned|_Bool|bool|size_t|ssize_t|wchar_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|intptr_t|uintptr_t|ptrdiff_t|FILE)\\b" },
+    { "name": "storage.modifier.c", "match": "\\b(struct|union|enum|typedef|static|extern|const|volatile|register|inline|auto|restrict)\\b" },
+    { "name": "entity.name.function.call.c", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

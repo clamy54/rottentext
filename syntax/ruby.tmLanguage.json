@@ -1,0 +1,18 @@
+{
+  "name": "Ruby",
+  "scopeName": "source.ruby",
+  "fileTypes": ["rb", "rake", "gemspec", "ru"],
+  "patterns": [
+    { "name": "comment.block.ruby", "begin": "^=begin", "end": "^=end" },
+    { "name": "comment.line.number-sign.ruby", "match": "#.*$" },
+    { "name": "string.quoted.double.ruby", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.ruby", "match": "'(?:\\\\.|[^'\\\\])*'" },
+    { "name": "constant.other.symbol.ruby", "match": ":[A-Za-z_][A-Za-z0-9_]*[?!]?" },
+    { "name": "variable.other.ruby", "match": "[@$]@?[A-Za-z_][A-Za-z0-9_]*" },
+    { "name": "constant.numeric.ruby", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|0o[0-7_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?)\\b" },
+    { "name": "constant.language.ruby", "match": "\\b(true|false|nil|self|__FILE__|__LINE__|__method__)\\b" },
+    { "name": "keyword.control.ruby", "match": "\\b(def|end|class|module|if|elsif|else|unless|case|when|while|until|for|in|do|then|begin|rescue|ensure|retry|return|yield|break|next|redo|alias|undef|super|defined\\?|require|require_relative|include|extend|raise|loop|lambda|proc|and|or|not)\\b" },
+    { "name": "support.function.builtin.ruby", "match": "\\b(puts|print|p|pp|gets|attr_accessor|attr_reader|attr_writer|new|freeze|frozen\\?|each|map|select|reject|reduce|inject|times|first|last|push|pop|shift|unshift|length|size|count|to_s|to_i|to_f|to_a|to_h|to_sym|nil\\?|empty\\?|include\\?|respond_to\\?|instance_of\\?|is_a\\?|kind_of\\?|send|public_send|block_given\\?)\\b" },
+    { "name": "entity.name.type.constant.ruby", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
+  ]
+}

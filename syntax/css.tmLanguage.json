@@ -1,0 +1,17 @@
+{
+  "name": "CSS",
+  "scopeName": "source.css",
+  "fileTypes": ["css"],
+  "patterns": [
+    { "name": "comment.block.css", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.css", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.css", "match": "'[^']*'" },
+    { "name": "keyword.control.at-rule.css", "match": "@[a-z-]+" },
+    { "name": "constant.numeric.color.css", "match": "#[0-9a-fA-F]{3,8}\\b" },
+    { "name": "constant.numeric.css", "match": "\\b\\d+(\\.\\d+)?(px|em|rem|ex|ch|vw|vh|vmin|vmax|%|pt|pc|in|cm|mm|s|ms|deg|rad|turn|fr|dpi)?\\b" },
+    { "name": "keyword.other.important.css", "match": "!\\s*important" },
+    { "name": "support.type.property-name.css", "match": "\\b[a-z-]+(?=\\s*:)" },
+    { "name": "entity.name.tag.selector.css", "match": "[.#][A-Za-z_-][A-Za-z0-9_-]*" },
+    { "name": "support.function.css", "match": "\\b[a-z-]+(?=\\()" }
+  ]
+}

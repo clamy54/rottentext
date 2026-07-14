@@ -1,0 +1,16 @@
+{
+  "name": "Juniper Junos",
+  "scopeName": "source.junos",
+  "fileTypes": ["junos"],
+  "patterns": [
+    { "name": "comment.line.number-sign.junos", "match": "#.*$" },
+    { "name": "comment.block.junos", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.junos", "match": "\"[^\"]*\"" },
+    { "name": "keyword.control.action.junos", "match": "(?i)\\b(accept|reject|discard|permit|deny|count|log|syslog|routing-instance)\\b" },
+    { "name": "keyword.other.stanza.junos", "match": "(?i)\\b(set|delete|deactivate|activate|from|then|term|filter|family|firewall|interfaces|routing-options|protocols|policy-options|security|system|services|snmp|apply-groups|groups|zones|policies|policy|rule|match|nat|address-book|address-set|applications|application)\\b" },
+    { "name": "keyword.operator.match.junos", "match": "(?i)\\b(protocol|source-address|destination-address|source-port|destination-port|source-prefix-list|destination-prefix-list|prefix-list|port|address|interface|next-hop|next|then)\\b" },
+    { "name": "storage.type.protocol.junos", "match": "(?i)\\b(tcp|udp|icmp|icmp6|esp|ah|gre|ospf|bgp|inet|inet6|any)\\b" },
+    { "name": "constant.numeric.ip.junos", "match": "\\b\\d{1,3}(\\.\\d{1,3}){3}(/\\d+)?\\b" },
+    { "name": "constant.numeric.junos", "match": "\\b\\d+\\b" }
+  ]
+}

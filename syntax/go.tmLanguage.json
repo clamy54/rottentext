@@ -1,0 +1,18 @@
+{
+  "name": "Go",
+  "scopeName": "source.go",
+  "fileTypes": ["go"],
+  "patterns": [
+    { "name": "comment.line.double-slash.go", "match": "//.*$" },
+    { "name": "comment.block.go", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.go", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.raw.go", "begin": "`", "end": "`" },
+    { "name": "string.quoted.rune.go", "match": "'(?:\\\\.|[^'\\\\])'" },
+    { "name": "constant.numeric.go", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|0o[0-7_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?i?)\\b" },
+    { "name": "constant.language.go", "match": "\\b(true|false|nil|iota)\\b" },
+    { "name": "keyword.control.go", "match": "\\b(break|case|chan|const|continue|default|defer|else|fallthrough|for|func|go|goto|if|import|interface|map|package|range|return|select|struct|switch|type|var)\\b" },
+    { "name": "storage.type.go", "match": "\\b(bool|string|error|any|byte|rune|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex64|complex128)\\b" },
+    { "name": "support.function.builtin.go", "match": "\\b(append|cap|close|copy|delete|len|make|new|panic|print|println|recover|min|max|clear)\\b" },
+    { "name": "entity.name.function.call.go", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Assembly ARM64",
+  "scopeName": "source.asm.arm64",
+  "fileTypes": ["s"],
+  "patterns": [
+    { "name": "comment.line.double-slash.arm64", "match": "//.*$" },
+    { "name": "comment.line.semicolon.arm64", "match": ";.*$" },
+    { "name": "comment.block.arm64", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.arm64", "match": "\"[^\"]*\"" },
+    { "name": "keyword.other.directive.arm64", "match": "^\\s*\\.[a-z_][a-z0-9_]*" },
+    { "name": "entity.name.function.label.arm64", "match": "^\\s*[A-Za-z_.$][A-Za-z0-9_.$]*:" },
+    { "name": "variable.register.arm64", "match": "(?i)\\b([xw](30|[12]?[0-9])|sp|lr|fp|pc|[xw]zr|[vqdshb](31|30|[12]?[0-9])|fpsr|fpcr|nzcv)\\b" },
+    { "name": "constant.numeric.immediate.arm64", "match": "(?i)#-?(0x[0-9a-f]+|\\d+(\\.\\d+)?)" },
+    { "name": "constant.numeric.arm64", "match": "(?i)\\b(0x[0-9a-f]+|0b[01]+|\\d+)\\b" },
+    { "name": "keyword.control.mnemonic.arm64", "match": "(?i)\\b(mov[zkn]?|mvn|adds?|adcs?|subs?|sbcs?|mul|umull?|smull?|madd|msub|mneg|[su]div|and[s]?|orr|orn|eor|eon|bics?|tst|lsl[v]?|lsr[v]?|asr[v]?|ror[v]?|ldr[bh]?|ldrs[bhw]|ldur|ldp|ldar|ldxr|str[bh]?|stur|stp|stlr|stxr|adrp?|cmp|cmn|ccmp|ccmn|bl?r?|ret|eret|cb[n]?z|tb[n]?z|b\\.[a-z]{2}|csel|csinc|csinv|csneg|cset|csetm|cinc|cinv|cneg|neg[s]?|ngc|rev(16|32|64)?|rbit|clz|cls|sxt[bhw]|uxt[bh]|bfi|bfxil|sbfx|ubfx|extr|svc|hvc|smc|brk|hlt|nop|yield|wfe|wfi|sev[l]?|dmb|dsb|isb|mrs|msr|sys|ic|dc|at|tlbi|fmov|fadd|fsub|fmul|fdiv|fneg|fabs|fsqrt|fcmp|fcvt[a-z]{0,3}|scvtf|ucvtf|fcsel|fmadd|fmsub)\\b" }
+  ]
+}

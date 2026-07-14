@@ -1,0 +1,16 @@
+{
+  "name": "SQL",
+  "scopeName": "source.sql",
+  "fileTypes": ["sql"],
+  "patterns": [
+    { "name": "comment.line.double-dash.sql", "match": "--.*$" },
+    { "name": "comment.block.sql", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.single.sql", "match": "'(?:''|[^'])*'" },
+    { "name": "string.quoted.double.identifier.sql", "match": "\"[^\"]*\"" },
+    { "name": "constant.numeric.sql", "match": "(?i)\\b(0x[0-9a-f]+|\\d+(\\.\\d+)?(e[-+]?\\d+)?)\\b" },
+    { "name": "constant.language.sql", "match": "(?i)\\b(null|true|false|current_date|current_time|current_timestamp)\\b" },
+    { "name": "keyword.control.sql", "match": "(?i)\\b(select|from|where|insert|into|values|update|set|delete|create|table|alter|drop|index|view|trigger|database|schema|sequence|join|inner|left|right|full|outer|cross|on|group|by|having|order|asc|desc|limit|offset|union|all|distinct|as|and|or|not|primary|key|foreign|references|constraint|unique|check|default|between|like|ilike|in|exists|is|case|when|then|else|end|begin|commit|rollback|transaction|grant|revoke|with|recursive|returning|using|if|cascade|restrict|add|column|rename|to|explain|analyze|vacuum|truncate)\\b" },
+    { "name": "storage.type.sql", "match": "(?i)\\b(int|integer|smallint|bigint|tinyint|decimal|numeric|float|real|double|precision|char|varchar|nvarchar|text|clob|blob|bytea|date|time|timestamp|timestamptz|interval|boolean|bool|serial|bigserial|uuid|json|jsonb|xml|money|bit|enum)\\b" },
+    { "name": "support.function.aggregate.sql", "match": "(?i)\\b(count|sum|avg|min|max|coalesce|nullif|cast|convert|substring|concat|length|upper|lower|trim|replace|round|now|extract|date_trunc|row_number|rank|dense_rank|lag|lead|greatest|least)(?=\\s*\\()" }
+  ]
+}

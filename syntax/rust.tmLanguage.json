@@ -1,0 +1,19 @@
+{
+  "name": "Rust",
+  "scopeName": "source.rust",
+  "fileTypes": ["rs"],
+  "patterns": [
+    { "name": "comment.line.double-slash.rust", "match": "//.*$" },
+    { "name": "comment.block.rust", "begin": "/\\*", "end": "\\*/" },
+    { "name": "string.quoted.double.rust", "match": "\"(?:\\\\.|[^\"\\\\])*\"" },
+    { "name": "string.quoted.single.rust", "match": "'(?:\\\\.|[^'\\\\])'" },
+    { "name": "keyword.other.attribute.rust", "match": "#!?\\[[^\\]]*\\]" },
+    { "name": "constant.numeric.rust", "match": "(?i)\\b(0x[0-9a-f_]+|0b[01_]+|0o[0-7_]+|\\d[\\d_]*(\\.[\\d_]+)?(e[-+]?\\d+)?(i8|i16|i32|i64|i128|isize|u8|u16|u32|u64|u128|usize|f32|f64)?)\\b" },
+    { "name": "constant.language.rust", "match": "\\b(true|false|Some|None|Ok|Err|self|Self)\\b" },
+    { "name": "keyword.control.rust", "match": "\\b(if|else|match|loop|while|for|in|break|continue|return|fn|impl|trait|struct|enum|union|mod|use|pub|crate|super|extern|unsafe|async|await|move|dyn|where|as|ref|macro_rules)\\b" },
+    { "name": "storage.type.rust", "match": "\\b(let|mut|const|static|i8|i16|i32|i64|i128|isize|u8|u16|u32|u64|u128|usize|f32|f64|bool|char|str|String|Vec|Box|Rc|Arc|Option|Result|HashMap|BTreeMap)\\b" },
+    { "name": "support.function.macro.rust", "match": "\\b[a-z_][a-z0-9_]*!(?=[\\s(\\[{])" },
+    { "name": "variable.other.lifetime.rust", "match": "'[a-z_][a-z0-9_]*\\b" },
+    { "name": "entity.name.function.call.rust", "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()" }
+  ]
+}

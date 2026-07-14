@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=RottenText
+GenericName=Text Editor
+GenericName[fr]=Éditeur de texte
+Comment=A rotten editor for rotten files and rotten days.
+Comment[fr]=Un éditeur pourri pour les fichiers pourris et les jours pourris.
+Exec=rottentext %f
+TryExec=rottentext
+Icon=rottentext
+Terminal=false
+# sans ca le shell ne relie pas la fenetre au lanceur: icone generique dans la barre
+StartupWMClass=RottenText
+Categories=Utility;TextEditor;Development;
+Keywords=editor;text;hex;sysadmin;ops;
+MimeType=text/plain;text/x-log;application/json;application/xml;text/x-yaml;

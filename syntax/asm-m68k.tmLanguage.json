@@ -1,0 +1,16 @@
+{
+  "name": "Assembly 68000",
+  "scopeName": "source.asm.m68k",
+  "fileTypes": ["x68", "s68", "68k"],
+  "patterns": [
+    { "name": "comment.line.semicolon.m68k", "match": ";.*$" },
+    { "name": "comment.line.star.m68k", "match": "^\\*.*$" },
+    { "name": "string.quoted.double.m68k", "match": "\"[^\"]*\"" },
+    { "name": "string.quoted.single.m68k", "match": "'[^']*'" },
+    { "name": "keyword.other.directive.m68k", "match": "(?i)\\b(org|equ|set|reg|dc|ds|dcb|even|cnop|include|incbin|incdir|section|text|data|bss|end|macro|endm|rept|endr|xdef|xref|public|global|opt|list|nolist|fail|if|ifd|ifnd|ifeq|ifne|endc|endif|rs|rsreset|rsset)(\\.[bwls])?\\b" },
+    { "name": "variable.register.m68k", "match": "(?i)\\b(d[0-7]|a[0-7]|sp|pc|sr|ccr|usp|ssp|vbr)\\b" },
+    { "name": "keyword.control.mnemonic.m68k", "match": "(?i)\\b(move[aqmp]?|movem|moveq|adda?|addq|addx|addi|suba?|subq|subx|subi|muls|mulu|divs|divu|andi?|ori?|eori?|not|negx?|clr|cmpa?|cmpi|cmpm|tst|lea|pea|jmp|jsr|bsr|rts|rte|rtr|trap|trapv|link|unlk|exg|ext|swap|ls[lr]|as[lr]|ro[lr]|rox[lr]|btst|bset|bclr|bchg|nop|stop|reset|illegal|chk|tas|abcd|sbcd|nbcd|bra|bcc|bcs|beq|bne|bge|bgt|ble|blt|bhi|bls|bmi|bpl|bvc|bvs|scc|scs|seq|sne|sge|sgt|sle|slt|shi|sls|smi|spl|svc|svs|sf|st|dbcc|dbcs|dbeq|dbne|dbge|dbgt|dble|dblt|dbhi|dbls|dbmi|dbpl|dbvc|dbvs|dbf|dbt|dbra)(\\.[bwls])?\\b" },
+    { "name": "entity.name.function.label.m68k", "match": "^[A-Za-z_.][A-Za-z0-9_$.]*:?" },
+    { "name": "constant.numeric.m68k", "match": "(?i)(\\$[0-9a-f]+|%[01]+|\\b\\d+\\b)" }
+  ]
+}

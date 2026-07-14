@@ -1,0 +1,16 @@
+{
+  "name": "BASIC",
+  "scopeName": "source.basic",
+  "fileTypes": ["bas", "bi", "bm"],
+  "patterns": [
+    { "name": "comment.line.rem.basic", "match": "(?i)\\bREM\\b.*$" },
+    { "name": "comment.line.apostrophe.basic", "match": "'.*$" },
+    { "name": "string.quoted.double.basic", "match": "\"[^\"]*\"" },
+    { "name": "constant.numeric.basic", "match": "(?i)(&h[0-9a-f]+|&o[0-7]+|&b[01]+|\\b\\d+(\\.\\d+)?(e[-+]?\\d+)?[!#%&]?)" },
+    { "name": "keyword.control.basic", "match": "(?i)\\b(if|then|else|elseif|endif|end if|for|to|step|next|while|wend|do|loop|until|goto|gosub|return|end|stop|exit|select|case|on|error|resume|call|sub|function|declare|def|fn)\\b" },
+    { "name": "keyword.operator.word.basic", "match": "(?i)\\b(and|or|not|xor|eqv|imp|mod|is)\\b" },
+    { "name": "storage.type.basic", "match": "(?i)\\b(dim|redim|as|integer|long|single|double|string|byte|boolean|variant|const|shared|static|type|common|global|let|data|read|restore|deftype|option|explicit|base)\\b" },
+    { "name": "support.function.builtin.basic", "match": "(?i)\\b(print|input|line input|cls|locate|color|beep|sound|play|randomize|rnd|abs|sgn|sqr|sin|cos|tan|atn|log|exp|int|fix|len|left\\$?|right\\$?|mid\\$?|instr|ltrim\\$?|rtrim\\$?|ucase\\$?|lcase\\$?|str\\$?|val|chr\\$?|asc|space\\$?|string\\$?|hex\\$?|oct\\$?|tab|spc|screen|pset|preset|line|circle|paint|draw|get|put|open|close|eof|lof|loc|seek|kill|name|files|shell|timer|date\\$?|time\\$?|inkey\\$?|peek|poke|swap|lbound|ubound|csrlin|pos|width|view|window)\\b" },
+    { "name": "entity.name.function.linenum.basic", "match": "^\\s*\\d+" }
+  ]
+}
