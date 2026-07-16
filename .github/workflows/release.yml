@@ -38,7 +38,9 @@ jobs:
 
   build-macos:
     needs: guard
-    runs-on: macos-latest   # arm64
+    # arm64; pas macos-latest: sur l'image macos-26 le mpkg FPC 3.2.2
+    # (format bundle, 2021) est refuse par installer
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
