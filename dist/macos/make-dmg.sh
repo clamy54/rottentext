@@ -14,8 +14,9 @@
 # puis :
 #   xcrun notarytool submit RottenText-<ver>.dmg --keychain-profile <profil> --wait
 #   xcrun stapler staple RottenText-<ver>.dmg
-# Sans ca, Gatekeeper affiche un avertissement au premier lancement (clic droit
-# > Ouvrir pour passer outre) : c'est normal sur de l'ad-hoc.
+# Sans ca, Gatekeeper bloque le premier lancement : ouvrir l'app une fois puis
+# l'autoriser dans Reglages Systeme > Confidentialite et securite (Ouvrir quand
+# meme). C'est normal sur de l'ad-hoc.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../.." && pwd)"

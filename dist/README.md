@@ -132,9 +132,10 @@ steals a default association. Measured, not assumed: a
 `.ini`, `.conf`) carry **no system UTI** at all — they get a dynamic one, so they
 are declared as text via `UTImportedTypeDeclarations`.
 
-With only an ad-hoc signature, Gatekeeper warns on first launch (right-click >
-Open to get past it). Developer ID signing and notarization are documented at
-the top of `make-dmg.sh`.
+With only an ad-hoc signature, Gatekeeper blocks the first launch: open the app
+once, then allow it in *System Settings > Privacy & Security* (Open Anyway).
+Developer ID signing and notarization are documented at the top of
+`make-dmg.sh`.
 
 ## Status
 

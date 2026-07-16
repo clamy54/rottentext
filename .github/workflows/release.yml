@@ -44,11 +44,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Installer Lazarus
-        uses: gcarreno/setup-lazarus@v3
-        with:
-          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
-          with-cache: false  # le service de cache repond 400 et l'action saute alors le vrai telechargement
+      - name: Installer Lazarus 4.4 aarch64
+        # pas setup-lazarus ici: sur macOS il ne pose que la variante x86_64
+        # et l'app sortirait en Intel (Rosetta chez l'utilisateur). On installe
+        # la distribution aarch64 officielle, memes fichiers SourceForge.
+        run: |
+          base="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.4"
+          curl -fsSL -o /tmp/fpc.dmg "$base/fpc-3.2.2.intelarm64-macosx.dmg/download"
+          sudo hdiutil attach -noautoopen /tmp/fpc.dmg
+          sudo installer -package "/Volumes/fpc-3.2.2.intelarm64-macosx/fpc-3.2.2-intelarm64-macosx.mpkg" -target /
+          sudo hdiutil detach "/Volumes/fpc-3.2.2.intelarm64-macosx"
+          curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.4.zip/download"
+          unzip -q /tmp/lazarus.zip -d "$HOME/laz"
+          lb="$(find "$HOME/laz" -maxdepth 3 -name lazbuild -type f | head -1)"
+          [ -n "$lb" ] || { echo "lazbuild introuvable dans le zip" >&2; exit 1; }
+          chmod +x "$lb"
+          sudo ln -sf "$lb" /usr/local/bin/lazbuild
+          lazbuild --version
       - name: Construire RottenText.app (release, signature ad hoc)
         run: bash scripts/make-app.sh --release
       - name: Empaqueter le .dmg
@@ -141,7 +153,7 @@ jobs:
         run: |
           ls -l assets
           notes="$(printf '%s\n\n%s' \
-            "macOS: the app is ad-hoc signed, not notarized. On first launch, right-click the app and choose Open." \
+            "macOS: the app is ad-hoc signed, not notarized. Gatekeeper blocks the first launch: open the app once, then go to System Settings > Privacy & Security and click Open Anyway." \
             "Changes: https://github.com/${GH_REPO}/commits/${TAG}")"
           if gh release view "$TAG" >/dev/null 2>&1; then
             # relance apres echec: la release existe deja, on remplace les fichiers
