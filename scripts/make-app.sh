@@ -77,7 +77,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<key>CFBundleShortVersionString</key>
 	<string>$ver</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$ver</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>LSMinimumSystemVersion</key>
