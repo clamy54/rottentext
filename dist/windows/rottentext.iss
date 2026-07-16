@@ -3,13 +3,33 @@
 ; (l'exe attendu est RottenText.exe a la racine du depot).
 ; Compilation de l'installeur : ISCC.exe rottentext.iss  (ou via l'IDE Inno Setup).
 ;
-; AppVersion doit suivre RT_VERSION (src\uMain.pas), qui est la source unique
-; affichee par Help > About.
+; AppVersion est extrait de RT_VERSION (src\uMain.pas) a la compilation, comme
+; le font deja build-deb.sh et make-dmg.sh : source unique, celle de Help > About.
+; Introuvable = erreur ISPP, jamais de version par defaut silencieuse.
 
 #define AppName "RottenText"
-#define AppVersion "1.0"
 #define AppPublisher "Cyril Lamy"
 #define AppExe "RottenText.exe"
+
+#define VerFH
+#define VerLine
+#define AppVersion ""
+#sub ScanVersionLine
+  #define VerLine = FileRead(VerFH)
+  #if AppVersion == "" && Pos("RT_VERSION", VerLine) > 0 && Pos("'", VerLine) > 0
+    #define VerLine = Copy(VerLine, Pos("'", VerLine) + 1)
+    #if Pos("'", VerLine) > 0
+      #define AppVersion = Copy(VerLine, 1, Pos("'", VerLine) - 1)
+    #endif
+  #endif
+#endsub
+#for {VerFH = FileOpen(AddBackslash(SourcePath) + "..\..\src\uMain.pas"); VerFH && !FileEof(VerFH); ""} ScanVersionLine
+#if VerFH
+  #expr FileClose(VerFH)
+#endif
+#if AppVersion == ""
+  #error RT_VERSION introuvable dans src\uMain.pas
+#endif
 
 ; third-party.txt = LICENSE_THIRD_PARTIES.md rendu en texte lisible (Inno
 ; afficherait le markdown tel quel: #, ** et | des tableaux). Regenere ICI, a
