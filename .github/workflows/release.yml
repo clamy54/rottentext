@@ -55,8 +55,12 @@ jobs:
           sudo installer -package "/Volumes/fpc-3.2.2.intelarm64-macosx/fpc-3.2.2-intelarm64-macosx.mpkg" -target /
           sudo hdiutil detach "/Volumes/fpc-3.2.2.intelarm64-macosx"
           curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.4.zip/download"
-          unzip -q /tmp/lazarus.zip -d "$HOME/laz"
-          lb="$(find "$HOME/laz" -maxdepth 3 -name lazbuild -type f | head -1)"
+          # /Developer impose: la config embarquee du zip pointe LazarusDirectory dessus
+          sudo mkdir -p /Developer
+          sudo unzip -q /tmp/lazarus.zip -d /Developer
+          sudo chown -R "$USER" /Developer/lazarus
+          lb="/Developer/lazarus/lazbuild"
+          [ -x "$lb" ] || lb="$(find /Developer -maxdepth 3 -name lazbuild -type f | head -1)"
           [ -n "$lb" ] || { echo "lazbuild introuvable dans le zip" >&2; exit 1; }
           chmod +x "$lb"
           sudo ln -sf "$lb" /usr/local/bin/lazbuild
