@@ -22,6 +22,12 @@ function HasHardLinks(const APath: string): Boolean;
 function ResolveLink(const APath: string): string;
 function CreateTempIn(const ADest: string; out ATmpName: string): TOwnedHandleStream;
 function ReplaceByRename(const ATmp, ADest: string): Boolean;
+// variantes "fichier prive" (session, settings, recent: une note non sauvee
+// peut contenir un secret). POSIX: 0600/0700 quel que soit l'umask; Windows:
+// no-op, le profil utilisateur est deja protege par ACL
+function ReplaceByRenamePrivate(const ATmp, ADest: string): Boolean;
+procedure MakePrivateFile(const APath: string);
+procedure MakePrivateDir(const APath: string);
 procedure WriteInPlaceKeepLinks(const APath, AData: string);
 // WriteBuffer prend un Count Longint: au-dela de 2 Gio la taille wrappe en
 // silence ({$R-}) = copie tronquee
@@ -215,6 +221,35 @@ begin
 end;
 
 {$ENDIF}
+
+function ReplaceByRenamePrivate(const ATmp, ADest: string): Boolean;
+begin
+  {$IFDEF UNIX}
+  // pas de preservation de mode: la cible est a nous, et un 0644 herite
+  // d'avant le durcissement ne doit pas survivre a la reecriture
+  Result := RenameFile(ATmp, ADest);
+  if Result then
+    fpChmod(PChar(ADest), &600);
+  {$ELSE}
+  Result := ReplaceByRename(ATmp, ADest);
+  {$ENDIF}
+end;
+
+procedure MakePrivateFile(const APath: string);
+begin
+  if APath = '' then Exit;
+  {$IFDEF UNIX}
+  fpChmod(PChar(APath), &600); // rattrapage best effort des fichiers deja nes
+  {$ENDIF}
+end;
+
+procedure MakePrivateDir(const APath: string);
+begin
+  if APath = '' then Exit;
+  {$IFDEF UNIX}
+  fpChmod(PChar(ExcludeTrailingPathDelimiter(APath)), &700);
+  {$ENDIF}
+end;
 
 procedure WriteInPlaceKeepLinks(const APath, AData: string);
 var

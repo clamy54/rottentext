@@ -88,6 +88,10 @@ var
   obj: TJSONObject;
   themed: Boolean;
 begin
+  // rattrapage des configs nees avant le durcissement (0644/0755); tourne a
+  // chaque lancement, couvre aussi les fenetres hors session
+  MakePrivateDir(GetAppConfigDir(False));
+  MakePrivateFile(SettingsFile);
   themed := False;
   root := nil;
   try
@@ -166,6 +170,7 @@ begin
       obj.Free;
     end;
     ForceDirectories(GetAppConfigDir(False));
+    MakePrivateDir(GetAppConfigDir(False));
     st := CreateTempIn(SettingsFile, tmp);
     try
       if data <> '' then
@@ -173,7 +178,7 @@ begin
     finally
       st.Free;
     end;
-    if not ReplaceByRename(tmp, SettingsFile) then
+    if not ReplaceByRenamePrivate(tmp, SettingsFile) then
       DeleteFile(tmp);
   except
     // best effort, mais pas de temp laisse trainer sur exception

@@ -240,7 +240,7 @@ begin
   if ((j <= Length(S)) and IsAlnumC(S[j])) or
      ((len <> 10) and (len <> 13)) then Exit;
   v := StrToInt64Def(Copy(S, i, len), -1);
-  if v <= 0 then Exit;
+  if v < 0 then Exit; // 0 = epoch 1970, legitime
   if len = 13 then
     AUtc := UnixToDateTime(v div 1000) + (v mod 1000) / 86400000.0
   else

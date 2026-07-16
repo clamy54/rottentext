@@ -23,16 +23,9 @@ function ValidK8sName(const S: string): Boolean;
 implementation
 
 uses
-  uYaml, uOps;
+  uYaml, uOps, uEnv;
 
-function StripEnvQuotes(const S: string): string;
-begin
-  Result := S;
-  if Length(Result) >= 2 then
-    if ((Result[1] = '"') and (Result[Length(Result)] = '"')) or
-       ((Result[1] = '''') and (Result[Length(Result)] = '''')) then
-      Result := Copy(Result, 2, Length(Result) - 2);
-end;
+procedure EmitCmValue(ARes: TStringList; const AKey, AVal: string); forward;
 
 function ValidK8sLabel(const S: string): Boolean;
 var
@@ -126,7 +119,7 @@ begin
       eq := Pos('=', ln);
       if eq = 0 then Continue;
       key := Trim(Copy(ln, 1, eq - 1));
-      val := StripEnvQuotes(Trim(Copy(ln, eq + 1, MaxInt)));
+      val := EnvDecodeValue(Trim(Copy(ln, eq + 1, MaxInt)));
       if not ValidSecretKey(key) then Continue;
       res.Add('  ' + key + ': ' + B64Encode(val));
     end;
@@ -173,7 +166,9 @@ begin
           end;
           try
             dec := B64Decode(Trim(data.Vals[i].Scalar));
-            res.Add(data.Keys[i] + '=' + dec);
+            // une valeur multi-ligne (PEM, kubeconfig) emise brute injecterait
+            // des lignes dans le .env de sortie
+            EmitCmValue(res, data.Keys[i], dec);
           except
             res.Add(data.Keys[i] + '=<invalid base64>');
           end;
@@ -181,7 +176,7 @@ begin
       if (sdata <> nil) and (sdata.Kind = ykMap) then
         for i := 0 to High(sdata.Keys) do
           if sdata.Vals[i].Kind = ykScalar then
-            res.Add(sdata.Keys[i] + '=' + sdata.Vals[i].Scalar);
+            EmitCmValue(res, sdata.Keys[i], sdata.Vals[i].Scalar);
       Result := res.Text;
     finally
       res.Free;
@@ -213,7 +208,7 @@ begin
       eq := Pos('=', ln);
       if eq = 0 then Continue;
       key := Trim(Copy(ln, 1, eq - 1));
-      val := StripEnvQuotes(Trim(Copy(ln, eq + 1, MaxInt)));
+      val := EnvDecodeValue(Trim(Copy(ln, eq + 1, MaxInt)));
       if not ValidSecretKey(key) then Continue;
       // quote YAML sinon true/123 cesseraient d'etre des strings
       res.Add('  ' + key + ': ' + YamlQuoteScalar(val));

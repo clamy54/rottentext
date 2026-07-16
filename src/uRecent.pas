@@ -118,6 +118,7 @@ var
   entry: string;
 begin
   FList.Clear;
+  MakePrivateFile(RecentFileJson); // rattrapage d'avant le durcissement
   root := nil;
   try
     try
@@ -162,6 +163,7 @@ begin
   tmp := '';
   try
     ForceDirectories(GetAppConfigDir(False));
+    MakePrivateDir(GetAppConfigDir(False));
     arr := TJSONArray.Create;
     try
       for i := 0 to FList.Count - 1 do
@@ -177,7 +179,7 @@ begin
     finally
       st.Free;
     end;
-    if not ReplaceByRename(tmp, RecentFileJson) then
+    if not ReplaceByRenamePrivate(tmp, RecentFileJson) then
       DeleteFile(tmp);
   except
     // best effort, mais pas de temp laisse trainer sur exception

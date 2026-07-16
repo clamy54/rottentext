@@ -27,6 +27,12 @@ function EnvFromYaml(const AText: string; out AErr: string): string;
 // cle validee + valeur quotee/echappee : le seul emetteur .env anti-injection
 function EmitEnvLine(const AKey, AValue: string): string;
 
+// lecture d'une valeur dotenv : doubles quotes = echappes \n \t \r \" \\
+// developpees (ce qu'EmitEnvLine ecrit, sinon JSON -> .env -> JSON rendait
+// des backslashes litteraux), simples quotes = verbatim, nu = verbatim.
+// Un \x inconnu reste \x : un "C:\path" ecrit a la main garde son backslash.
+function EnvDecodeValue(const S: string): string;
+
 implementation
 
 uses
@@ -70,13 +76,29 @@ begin
   Result := ekEntry;
 end;
 
-function StripQuotes(const S: string): string;
+function EnvDecodeValue(const S: string): string;
+var
+  i: Integer;
 begin
-  Result := S;
-  if Length(Result) >= 2 then
-    if ((Result[1] = '"') and (Result[Length(Result)] = '"')) or
-       ((Result[1] = '''') and (Result[Length(Result)] = '''')) then
-      Result := Copy(Result, 2, Length(Result) - 2);
+  if (Length(S) >= 2) and (S[1] = '''') and (S[Length(S)] = '''') then
+    Exit(Copy(S, 2, Length(S) - 2));
+  if (Length(S) < 2) or (S[1] <> '"') or (S[Length(S)] <> '"') then
+    Exit(S);
+  Result := '';
+  i := 2;
+  while i <= Length(S) - 1 do
+  begin
+    if (S[i] = '\') and (i < Length(S) - 1) then
+      case S[i + 1] of
+        'n': begin Result := Result + #10; Inc(i, 2); Continue; end;
+        'r': begin Result := Result + #13; Inc(i, 2); Continue; end;
+        't': begin Result := Result + #9;  Inc(i, 2); Continue; end;
+        '"': begin Result := Result + '"'; Inc(i, 2); Continue; end;
+        '\': begin Result := Result + '\'; Inc(i, 2); Continue; end;
+      end;
+    Result := Result + S[i];
+    Inc(i);
+  end;
 end;
 
 function SplitLines(const AText: string): TStringList;
@@ -336,7 +358,7 @@ begin
     for i := 0 to lines.Count - 1 do
       if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
       begin
-        val := StripQuotes(Trim(val));
+        val := EnvDecodeValue(Trim(val));
         // dotenv : dernier gagne
         k := obj.IndexOfName(key);
         if k >= 0 then obj.Delete(k);
@@ -542,7 +564,7 @@ begin
   try
     for i := 0 to lines.Count - 1 do
       case ClassifyEnv(lines[i], key, val, exp) of
-        ekEntry: outp.Add(key + ': ' + YamlQuoteScalar(StripQuotes(Trim(val))));
+        ekEntry: outp.Add(key + ': ' + YamlQuoteScalar(EnvDecodeValue(Trim(val))));
         ekBlank: outp.Add('');
         ekComment: outp.Add(lines[i]);
       else

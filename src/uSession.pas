@@ -223,6 +223,11 @@ begin
   S.ActiveGroup := 0;
   S.Shown[0] := -1;
   S.Shown[1] := -1;
+  // rattrapage des sessions nees avant le durcissement (0644/0755); les
+  // tampons u*.txt repasseront en 0600 au prochain save, le 0700 du dossier
+  // les couvre des maintenant
+  MakePrivateDir(SessionDir);
+  MakePrivateFile(SessionFile);
   root := nil;
   try
     try
@@ -365,7 +370,7 @@ begin
     finally
       st.Free;
     end;
-    Result := ReplaceByRename(tmp, SessionDir + AName);
+    Result := ReplaceByRenamePrivate(tmp, SessionDir + AName);
     if not Result then
       DeleteFile(tmp);
   except
@@ -440,6 +445,8 @@ begin
   committed := False;
   try
     ForceDirectories(SessionDir);
+    MakePrivateDir(ConfigDir);
+    MakePrivateDir(SessionDir);
     gen := 0;
     if FindFirst(SessionDir + 'u*.txt', faAnyFile, sr) = 0 then
     begin
@@ -526,7 +533,7 @@ begin
       finally
         st.Free;
       end;
-      if ReplaceByRename(tmp, SessionFile) then
+      if ReplaceByRenamePrivate(tmp, SessionFile) then
       begin
         tmp := '';
         committed := True; // a partir d'ici les tampons neufs SONT la session

@@ -332,7 +332,7 @@ var
            ((len = 10) or (len = 13)) and SpanFree(i, len) then
         begin
           v := StrToInt64Def(Copy(S, i, len), -1);
-          if v > 0 then
+          if v >= 0 then // 0 = epoch 1970, legitime
           begin
             if len = 13 then
             begin

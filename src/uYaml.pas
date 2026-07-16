@@ -517,7 +517,16 @@ begin
       if idx >= p.N then
         Result := TYamlNode.Create(ykMap)
       else
+      begin
         Result := p.ParseNode(idx, 0, 0);
+        // rien ne doit rester: les boucles map/liste sortent en silence sur
+        // une ligne qui ne colle pas, Validate dirait OK sur un fichier a
+        // moitie parse et les outils travailleraient sur un arbre ampute
+        p.SkipBlanks(idx);
+        if idx < p.N then
+          raise EYamlError.CreateFmt('unparsed content at line %d',
+            [p.L[idx].LineNo]);
+      end;
       if Result = nil then
         Result := TYamlNode.Create(ykMap);
     except
@@ -644,7 +653,7 @@ begin
   if S[1] in ['!', '&', '*', '?', ':', ',', '[', ']', '{', '}', '#', '|',
               '>', '@', '%', '"', '''', '`', '-'] then Exit(True);
   if (Pos(': ', S) > 0) or (Pos(' #', S) > 0) then Exit(True);
-  if (Pos(#10, S) > 0) or (Pos(#9, S) > 0) then Exit(True);
+  if (Pos(#10, S) > 0) or (Pos(#13, S) > 0) or (Pos(#9, S) > 0) then Exit(True);
   low := LowerCase(S);
   if (low = 'true') or (low = 'false') or (low = 'null') or (low = '~') or
      (low = 'yes') or (low = 'no') or (low = 'on') or (low = 'off') then Exit(True);
@@ -655,10 +664,15 @@ end;
 function QuoteScalar(const S: string): string;
 begin
   if not NeedsQuote(S) then Exit(S);
-  Result := '"' + StringReplace(StringReplace(StringReplace(S,
+  // CR/tab echappes aussi: un CR litteral casserait la structure de lignes
+  // (Unquote les decode deja, round-trip stable)
+  Result := '"' + StringReplace(StringReplace(StringReplace(StringReplace(
+    StringReplace(S,
     '\', '\\', [rfReplaceAll]),
     '"', '\"', [rfReplaceAll]),
-    #10, '\n', [rfReplaceAll]) + '"';
+    #13, '\r', [rfReplaceAll]),
+    #10, '\n', [rfReplaceAll]),
+    #9, '\t', [rfReplaceAll]) + '"';
 end;
 
 function YamlQuoteScalar(const S: string): string;
