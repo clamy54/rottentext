@@ -55,14 +55,14 @@ jobs:
           sudo installer -package "/Volumes/fpc-3.2.2.intelarm64-macosx/fpc-3.2.2-intelarm64-macosx.mpkg" -target /
           sudo hdiutil detach "/Volumes/fpc-3.2.2.intelarm64-macosx"
           curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.4.zip/download"
-          # /Developer impose: la config embarquee du zip pointe LazarusDirectory dessus
-          sudo mkdir -p /Developer
-          sudo unzip -q /tmp/lazarus.zip -d /Developer
-          sudo chown -R "$USER" /Developer/lazarus
-          lb="/Developer/lazarus/lazbuild"
-          [ -x "$lb" ] || lb="$(find /Developer -maxdepth 3 -name lazbuild -type f | head -1)"
-          [ -n "$lb" ] || { echo "lazbuild introuvable dans le zip" >&2; exit 1; }
-          chmod +x "$lb"
+          unzip -q /tmp/lazarus.zip -d "$HOME/laz"
+          # la config portable du zip pointe /Developer/lazarus, inaccessible
+          # (racine scellee SSV): on la fait pointer sur l'emplacement reel
+          cfg="$HOME/laz/lazarus/config/environmentoptions.xml"
+          [ -f "$cfg" ] || { echo "config du zip introuvable" >&2; ls "$HOME/laz" "$HOME/laz/lazarus" >&2; exit 1; }
+          sed -i '' "s|/Developer/lazarus|$HOME/laz/lazarus|g" "$cfg"
+          lb="$HOME/laz/lazarus/lazbuild"
+          [ -x "$lb" ] || { echo "lazbuild introuvable dans le zip" >&2; exit 1; }
           sudo ln -sf "$lb" /usr/local/bin/lazbuild
           lazbuild --version
       - name: Construire RottenText.app (release, signature ad hoc)
