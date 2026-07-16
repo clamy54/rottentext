@@ -3,33 +3,19 @@
 ; (l'exe attendu est RottenText.exe a la racine du depot).
 ; Compilation de l'installeur : ISCC.exe rottentext.iss  (ou via l'IDE Inno Setup).
 ;
-; AppVersion est extrait de RT_VERSION (src\uMain.pas) a la compilation, comme
-; le font deja build-deb.sh et make-dmg.sh : source unique, celle de Help > About.
-; Introuvable = erreur ISPP, jamais de version par defaut silencieuse.
+; AppVersion est extrait de RT_VERSION (src\uMain.pas) a la compilation :
+; make-version.ps1 genere version.iss (meme mecanisme que make-notices.ps1).
+; RT_VERSION introuvable = erreur de compilation, jamais de version par defaut.
 
 #define AppName "RottenText"
 #define AppPublisher "Cyril Lamy"
 #define AppExe "RottenText.exe"
 
-#define VerFH
-#define VerLine
-#define AppVersion ""
-#sub ScanVersionLine
-  #define VerLine = FileRead(VerFH)
-  #if AppVersion == "" && Pos("RT_VERSION", VerLine) > 0 && Pos("'", VerLine) > 0
-    #define VerLine = Copy(VerLine, Pos("'", VerLine) + 1)
-    #if Pos("'", VerLine) > 0
-      #define AppVersion = Copy(VerLine, 1, Pos("'", VerLine) - 1)
-    #endif
-  #endif
-#endsub
-#for {VerFH = FileOpen(AddBackslash(SourcePath) + "..\..\src\uMain.pas"); VerFH && !FileEof(VerFH); ""} ScanVersionLine
-#if VerFH
-  #expr FileClose(VerFH)
+#define VerRC Exec("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -File """ + SourcePath + "\make-version.ps1""", SourcePath, 1, 0)
+#if VerRC != 0
+  #error make-version.ps1 a echoue: version non extraite de src\uMain.pas
 #endif
-#if AppVersion == ""
-  #error RT_VERSION introuvable dans src\uMain.pas
-#endif
+#include "version.iss"
 
 ; third-party.txt = LICENSE_THIRD_PARTIES.md rendu en texte lisible (Inno
 ; afficherait le markdown tel quel: #, ** et | des tableaux). Regenere ICI, a

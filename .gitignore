@@ -28,3 +28,5 @@ dist/*/build/
 dist/windows/output/
 # regenere depuis LICENSE_THIRD_PARTIES.md a chaque compilation de l'installeur
 dist/windows/third-party.txt
+# regenere depuis RT_VERSION (uMain.pas) a chaque compilation de l'installeur
+dist/windows/version.iss
