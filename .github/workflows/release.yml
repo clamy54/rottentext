@@ -38,9 +38,11 @@ jobs:
 
   build-macos:
     needs: guard
-    # arm64; pas macos-latest: sur l'image macos-26 le mpkg FPC 3.2.2
-    # (format bundle, 2021) est refuse par installer
-    runs-on: macos-15
+    # arm64. Pas macos-latest: l'image macos-26 refuse le mpkg FPC 3.2.2
+    # (format bundle 2021), et le ld d'Xcode 16 (macos-15) segfault sur les
+    # options de link de FPC 3.2.2. macos-14 = Xcode 15.4 par defaut, dont
+    # le linker classique (-ld_classic) accepte ces options.
+    runs-on: macos-14
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +56,12 @@ jobs:
           sudo hdiutil attach -noautoopen /tmp/fpc.dmg
           sudo installer -package "/Volumes/fpc-3.2.2.intelarm64-macosx/fpc-3.2.2-intelarm64-macosx.mpkg" -target /
           sudo hdiutil detach "/Volumes/fpc-3.2.2.intelarm64-macosx"
+          # le ld moderne (ld-prime) segfault sur le -order_file emis par
+          # FPC 3.2.2: on force le linker classique
+          fcfg=/etc/fpc.cfg
+          [ -f "$fcfg" ] || fcfg="$(find /etc /usr/local/etc -maxdepth 2 -name fpc.cfg 2>/dev/null | head -1)"
+          [ -n "$fcfg" ] || { echo "fpc.cfg introuvable" >&2; exit 1; }
+          echo "-k-ld_classic" | sudo tee -a "$fcfg" >/dev/null
           curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.4.zip/download"
           unzip -q /tmp/lazarus.zip -d "$HOME/laz"
           # la config portable du zip pointe /Developer/lazarus, inaccessible
