@@ -53,10 +53,10 @@ jobs:
           base="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.8"
           curl -fsSL -o /tmp/fpc.dmg "$base/fpc-3.2.4rc1a.intelarm64-macosx.dmg/download"
           sudo hdiutil attach -noautoopen /tmp/fpc.dmg
-          pkg="$(find /Volumes/fpc-3.2.4rc1a* -maxdepth 1 \( -name '*.mpkg' -o -name '*.pkg' \) | head -1)"
+          pkg="$(find /Volumes/fpc-* -maxdepth 1 \( -name '*.mpkg' -o -name '*.pkg' \) | head -1)"
           [ -n "$pkg" ] || { echo "paquet FPC introuvable dans le dmg" >&2; ls /Volumes >&2; exit 1; }
           sudo installer -package "$pkg" -target /
-          sudo hdiutil detach /Volumes/fpc-3.2.4rc1a*
+          sudo hdiutil detach /Volumes/fpc-*
           curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.8.zip/download"
           unzip -q /tmp/lazarus.zip -d "$HOME/laz"
           # la config portable du zip pointe /Developer/lazarus, inaccessible
