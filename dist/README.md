@@ -17,8 +17,8 @@ Two things every package must carry, whatever the platform:
   `LICENSE` and `LICENSE_THIRD_PARTIES.md`. Do not drop them.
 
 The version comes from `RT_VERSION` in `src/uMain.pas` — the single source of
-truth, also shown in `Help > About`. The Linux and macOS scripts extract it
-themselves; the Inno Setup script has it as a `#define` you must keep in sync.
+truth, also shown in `Help > About`. All three packagings extract it themselves;
+the Inno Setup script reads it at compile time and errors out if it is missing.
 
 ## Windows (`windows/`)
 
@@ -27,7 +27,7 @@ Inno Setup 6 installer.
 1. `powershell -File scripts\build.ps1 -Release` (produces `RottenText.exe` at
    the repository root).
 2. Compile the installer: `ISCC.exe dist\windows\rottentext.iss` (or open it in
-   the Inno Setup IDE). Output: `dist\windows\output\RottenText-Setup-1.0.exe`.
+   the Inno Setup IDE). Output: `dist\windows\output\RottenText-Setup-<version>.exe`.
 
 Installs the executable, `syntax\`, `themes\` and the licenses into the install
 directory, plus Start Menu (and optional desktop) shortcuts.
@@ -152,3 +152,21 @@ made the package installable nowhere.
 The macOS `.app` pipeline is known good, and the `.dmg` is **tested**: layout
 persisted, `/Applications` alias, the signature of the app *inside the image*
 verified, and opening a file through "Open With" checked against LaunchServices.
+
+## Releases (GitHub Actions)
+
+Everything above also runs unattended in `.github/workflows/release.yml`:
+
+1. Bump `RT_VERSION` in `src/uMain.pas`, commit.
+2. `git tag v<version> && git push origin v<version>`.
+
+The workflow refuses a tag that does not match `RT_VERSION`, builds the three
+packages (macOS arm64 `.dmg`, Ubuntu amd64 `.deb`, Windows x64 setup, zipped)
+and attaches them to a **draft** release. Review the draft on the releases page,
+then publish it.
+
+Dry run without a tag: *Actions > release > Run workflow*. Builds and uploads
+the packages as run artifacts, skips the release.
+
+Rerunning a failed run is safe: an existing release is reused and its files are
+replaced, never duplicated.
