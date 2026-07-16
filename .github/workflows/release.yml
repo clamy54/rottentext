@@ -45,7 +45,7 @@ jobs:
       - name: Installer Lazarus
         uses: gcarreno/setup-lazarus@v3
         with:
-          lazarus-version: "4.8"
+          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
           with-cache: true
       - name: Construire RottenText.app (release, signature ad hoc)
         run: bash scripts/make-app.sh --release
@@ -68,7 +68,7 @@ jobs:
       - name: Installer Lazarus
         uses: gcarreno/setup-lazarus@v3
         with:
-          lazarus-version: "4.8"
+          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
           with-cache: true
       - name: Dependances d'empaquetage
         # dpkg-shlibdeps (dpkg-dev) pour les Depends, imagemagick pour les icones
@@ -94,7 +94,7 @@ jobs:
       - name: Installer Lazarus
         uses: gcarreno/setup-lazarus@v3
         with:
-          lazarus-version: "4.8"
+          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
           with-cache: true
       - name: Verifier Inno Setup 6
         # preinstalle sur windows-latest, ceinture et bretelles si l'image change
