@@ -971,6 +971,12 @@ begin
           Key := 0;
         end;
       VK_M:
+        begin
+          if ssShift in Shift then FActions.MacroPlayback(nil)
+          else FActions.MacroToggleRecord(nil);
+          Key := 0;
+        end;
+      VK_B:
         if ssShift in Shift then
         begin
           FActions.SelExpandBrackets(nil);
@@ -990,12 +996,9 @@ begin
           Key := 0;
         end;
       VK_D: begin if v <> nil then v.ExpandToWord; Key := 0; end;
-      VK_Q:
-        begin
-          if ssShift in Shift then FActions.MacroPlayback(nil)
-          else FActions.MacroToggleRecord(nil);
-          Key := 0;
-        end;
+      {$IFNDEF DARWIN} // sur mac Cmd+Q = Quit du menu app natif
+      VK_Q: begin FActions.FileQuit(nil); Key := 0; end;
+      {$ENDIF}
       VK_TAB:
         begin
           if ssShift in Shift then FMgr.ActivatePrev else FMgr.ActivateNext;

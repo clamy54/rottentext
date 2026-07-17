@@ -171,7 +171,7 @@ begin
   {$IFNDEF DARWIN}
   // macOS: le Quit du menu app natif suffit
   AddSep(nil, m);
-  AddItem(nil, m, 'Quit', @A.FileQuit); // pas de raccourci, Ctrl+Q = Record Macro
+  AddItem(nil, m, 'Quit', @A.FileQuit, ShortCut(Word('Q'), [ssModifier]));
   {$ENDIF}
 
   // Edit
@@ -207,7 +207,7 @@ begin
   AddItem(nil, m, 'Select All', @A.SelSelectAll, ShortCut(Word('A'), [ssModifier]));
   AddItem(nil, m, 'Expand Selection to Line', @A.SelExpandLine, ShortCut(Word('L'), [ssModifier]));
   AddItem(nil, m, 'Expand Selection to Word', @A.SelExpandWord, ShortCut(Word('D'), [ssModifier]));
-  AddItem(nil, m, 'Expand Selection to Brackets', @A.SelExpandBrackets, ShortCut(Word('M'), [ssModifier, ssShift]));
+  AddItem(nil, m, 'Expand Selection to Brackets', @A.SelExpandBrackets, ShortCut(Word('B'), [ssModifier, ssShift]));
   AddSep(nil, m);
   AddItem(nil, m, 'Add Previous Line', @A.SelAddPrevLine, ShortCut(VK_UP, [ssModifier, ssAlt]));
   AddItem(nil, m, 'Add Next Line', @A.SelAddNextLine, ShortCut(VK_DOWN, [ssModifier, ssAlt]));
@@ -286,8 +286,8 @@ begin
 
   // Macro
   m := AddMenu('Macro');
-  mi := AddItem(nil, m, 'Record Macro', @A.MacroToggleRecord, ShortCut(Word('Q'), [ssModifier]));
-  sub := AddItem(nil, m, 'Playback Macro', @A.MacroPlayback, ShortCut(Word('Q'), [ssModifier, ssShift]));
+  mi := AddItem(nil, m, 'Record Macro', @A.MacroToggleRecord, ShortCut(Word('M'), [ssModifier]));
+  sub := AddItem(nil, m, 'Playback Macro', @A.MacroPlayback, ShortCut(Word('M'), [ssModifier, ssShift]));
   A.SetMacroItems(mi, sub);
 
   // Tools: le Tag de chaque item porte la variante (handlers ToolsXxx d'uActions)
@@ -541,9 +541,10 @@ begin
 end;
 
 {$IFDEF DARWIN}
-// Le menu natif consomme ses equivalents clavier AVANT le KeyDown LCL: Esc
-// grabberait la fermeture de la find bar, et Cmd+Q / Cmd+H appartiennent a
-// macOS (Quit / Hide).
+// Esc grabberait la fermeture de la find bar, et Cmd+H appartient a macOS
+// (Hide): le remplacer passe par Cmd+Alt+F. Jusqu'a Lazarus 4.4 le menu natif
+// consomme ses equivalents clavier AVANT le KeyDown LCL; en 4.8 l'ordre
+// s'inverse, uMain exclut donc aussi Cmd+H de son KeyDown sur mac.
 procedure DarwinFixShortcuts(AItem: TMenuItem);
 var
   i: Integer;
@@ -552,10 +553,6 @@ begin
     DarwinFixShortcuts(AItem.Items[i]);
   if AItem.ShortCut = ShortCut(VK_ESCAPE, []) then
     AItem.ShortCut := 0
-  else if AItem.ShortCut = ShortCut(Word('Q'), [ssModifier]) then
-    AItem.ShortCut := ShortCut(Word('Q'), [ssCtrl])
-  else if AItem.ShortCut = ShortCut(Word('Q'), [ssModifier, ssShift]) then
-    AItem.ShortCut := ShortCut(Word('Q'), [ssCtrl, ssShift])
   else if AItem.ShortCut = ShortCut(Word('H'), [ssModifier]) then
     AItem.ShortCut := ShortCut(Word('F'), [ssModifier, ssAlt]);
 end;
