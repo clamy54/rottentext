@@ -50,9 +50,8 @@ jobs:
         # pas setup-lazarus ici: sur macOS il ne pose que la variante x86_64
         # et l'app sortirait en Intel (Rosetta chez l'utilisateur). On installe
         # la distribution aarch64 officielle, memes fichiers SourceForge.
-        # Pas Lazarus 4.8: son Cocoa supprime onQuitApp (utilise par uMain)
-        # et fait passer Cmd+Q par MainForm.CloseQuery, ce qui casse la
-        # logique bouton rouge = cacher. A adapter dans le code avant.
+        # Le code gere aussi Lazarus 4.8 (uDarwinQuit, gardes lcl_fullversion);
+        # on reste sur 4.4 car ce pipeline est eprouve avec cette version.
         run: |
           base="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.4"
           curl -fsSL -o /tmp/fpc.dmg "$base/fpc-3.2.2.intelarm64-macosx.dmg/download"

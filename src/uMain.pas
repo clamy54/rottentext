@@ -6,7 +6,8 @@ unit uMain;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, ExtCtrls, LCLType, Menus,
+  Classes, SysUtils, Forms, Controls, Graphics, ExtCtrls, LCLType, LCLVersion,
+  Menus,
   Dialogs, {$IFDEF DARWIN}CocoaConfig,{$ENDIF} uTheme, uMenuBar, uTabBar,
   uStatusBar, uMinimap, uScrollbar,
   uActions, uDocumentManager, uDocument, uEditorView, uHighlight, uFindBar,
@@ -49,7 +50,13 @@ type
     FBootShown: Boolean; // OnShow refire a chaque Show (cycle hide/show macOS)
     {$IFDEF DARWIN}
     FQuitting: Boolean; // quit VOULU (menu app, Cmd+Q, Dock), pas bouton rouge
+    {$IF lcl_fullversion >= 4080000}
+    FQuitHooked: Boolean; // item Quit du menu app re-cible (voir uDarwinQuit)
+    {$ENDIF}
     procedure DarwinQuit(Data: PtrInt);
+    {$IF lcl_fullversion >= 4080000}
+    procedure QueryEndSessionHandler(var Cancel: Boolean);
+    {$ENDIF}
     {$ENDIF}
     procedure BuildUI;
     procedure BuildPane(AIndex: Integer);
@@ -101,7 +108,7 @@ implementation
 
 {$IFDEF DARWIN}
 uses
-  CocoaAll;
+  CocoaAll{$IF lcl_fullversion >= 4080000}, uDarwinQuit{$ENDIF};
 {$ENDIF}
 
 constructor TfrmMain.Create(AOwner: TComponent);
@@ -245,7 +252,13 @@ begin
   // menus dans la barre globale; la barre custom reste le constructeur de l'arbre
   FMenuBar.AttachNative(Self);
   FMenuBar.Visible := False;
+  {$IF lcl_fullversion >= 4080000}
+  // 4.8: plus de onQuitApp. Quit Dock/extinction passe par QueryEndSession,
+  // Cmd+Q par l'item Quit re-cible au premier Show (voir uDarwinQuit)
+  Application.OnQueryEndSession := @QueryEndSessionHandler;
+  {$ELSE}
   CocoaConfigApplication.events.onQuitApp := @DarwinQuit;
+  {$ENDIF}
   {$ENDIF}
   FActions.SetSideBarChecked(FSideBar.Visible);
   FPanes[0].Tabs.Attach(FMgr, 0);
@@ -289,6 +302,11 @@ procedure TfrmMain.FormShowHandler(Sender: TObject);
 var
   sess: TSession;
 begin
+  {$IFDEF DARWIN}{$IF lcl_fullversion >= 4080000}
+  // le menu app n'existe qu'une fois le menu principal pose par Cocoa
+  if not FQuitHooked then
+    FQuitHooked := DarwinQuitHookInstall(@DarwinQuit);
+  {$ENDIF}{$ENDIF}
   if FSessionWin and not FSessionDone then
   begin
     FSessionDone := True;
@@ -426,6 +444,11 @@ end;
 
 procedure TfrmMain.FormActivateHandler(Sender: TObject);
 begin
+  {$IFDEF DARWIN}{$IF lcl_fullversion >= 4080000}
+  // filet: si le premier Show a couru avant la pose du menu principal
+  if not FQuitHooked then
+    FQuitHooked := DarwinQuitHookInstall(@DarwinQuit);
+  {$ENDIF}{$ENDIF}
   // CheckExternalChanges peut FERMER un doc tenu par une action: use-after-free
   if DocMutationBlocked then Exit;
   {$IFDEF DARWIN}
@@ -444,6 +467,16 @@ begin
   FQuitting := True;
   Close;
 end;
+
+{$IF lcl_fullversion >= 4080000}
+// quit par Apple Event (Dock, extinction, osascript): 4.8 enchaine sur un
+// Terminate sec, sans CloseQuery. Prompts et sauvegarde de session ici.
+procedure TfrmMain.QueryEndSessionHandler(var Cancel: Boolean);
+begin
+  FQuitting := True;
+  Cancel := not CloseQuery; // remet FQuitting a False si refus
+end;
+{$ENDIF}
 {$ENDIF}
 
 procedure TfrmMain.HandleSideOpen(const AFileName: string);
@@ -919,7 +952,11 @@ begin
           Key := 0;
         end;
       VK_F: begin FFindBar.ShowFind; Key := 0; end;
+      // sur mac Cmd+H = Hide macOS, le remplacer passe par Cmd+Alt+F
+      // (DarwinFixShortcuts); en 4.8 le KeyDown LCL court AVANT le menu
+      {$IFNDEF DARWIN}
       VK_H: begin FFindBar.ShowReplace; Key := 0; end;
+      {$ENDIF}
       VK_G: begin FActions.FindGotoOffset(nil); Key := 0; end;
       VK_K:
         begin

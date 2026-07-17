@@ -48,6 +48,9 @@
             <OtherUnitFiles Value="src"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)-release"/>
           </SearchPaths>
+          <Conditionals Value="// ld moderne d&apos;Xcode: bug sur les sections objc de FPC, linker classique
+if TargetOS = &apos;darwin&apos; then
+  CustomOptions := &apos;-k-ld_classic&apos;;"/>
           <CodeGeneration>
             <SmartLinkUnit Value="True"/>
             <Optimizations>
@@ -124,6 +127,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/uDarwinQuit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/uFontEmbed.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -179,6 +186,9 @@
       <OtherUnitFiles Value="src"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
+    <Conditionals Value="// ld moderne d&apos;Xcode: bug sur les sections objc de FPC, linker classique
+if TargetOS = &apos;darwin&apos; then
+  CustomOptions := &apos;-k-ld_classic&apos;;"/>
     <Linking>
       <Debugging>
         <DebugInfoType Value="dsDwarf3"/>
