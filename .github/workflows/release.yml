@@ -70,6 +70,9 @@ jobs:
           [ -x "$lb" ] || { echo "lazbuild introuvable dans le zip" >&2; exit 1; }
           sudo ln -sf "$lb" /usr/local/bin/lazbuild
           lazbuild --version
+          # SynEdit rate les avances fractionnaires (CoreText): texte corrompu
+          # au deplacement du curseur avec Monaspace, voir le script
+          bash scripts/patch-synedit-fractional.sh "$HOME/laz/lazarus"
       - name: Construire RottenText.app (release, signature ad hoc)
         run: bash scripts/make-app.sh --release
       - name: Empaqueter le .dmg
