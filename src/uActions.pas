@@ -5,7 +5,8 @@ unit uActions;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, Forms, Menus, Dialogs, Process, PrintersDlgs,
+  Classes, SysUtils, Types, Controls, Forms, StdCtrls, Menus, Dialogs, Process,
+  PrintersDlgs,
   Clipbrd, LazUTF8, SynEdit, SynEditKeyCmds, SynMacroRecorder,
   uDocumentManager, uDocument, uEditorView, uHighlight, uFindBar, uPrint,
   uHexView, uTextOps, uRecent, uThemeLoad, uSettings, uOps, uSecretPrompt, uLdap,
@@ -509,11 +510,37 @@ begin
   if FSaveEncItem <> nil then FSaveEncItem.Enabled := ena;
 end;
 
-procedure TAppActions.EditUndo(Sender: TObject);   begin Cmd(ecUndo); end;
+// le menu natif mac tire Undo/Cut/Copy/Paste/Select All par equivalent
+// clavier meme quand le focus est dans un TEdit (find bar, palette):
+// router vers le champ, pas le document
+function FocusedEdit: TCustomEdit;
+begin
+  Result := nil;
+  if Screen.ActiveControl is TCustomEdit then
+    Result := TCustomEdit(Screen.ActiveControl);
+end;
+
+procedure TAppActions.EditUndo(Sender: TObject);
+begin
+  if FocusedEdit <> nil then FocusedEdit.Undo else Cmd(ecUndo);
+end;
+
 procedure TAppActions.EditRedo(Sender: TObject);   begin Cmd(ecRedo); end;
-procedure TAppActions.EditCut(Sender: TObject);    begin Cmd(ecCut); end;
-procedure TAppActions.EditCopy(Sender: TObject);   begin Cmd(ecCopy); end;
-procedure TAppActions.EditPaste(Sender: TObject);  begin Cmd(ecPaste); end;
+
+procedure TAppActions.EditCut(Sender: TObject);
+begin
+  if FocusedEdit <> nil then FocusedEdit.CutToClipboard else Cmd(ecCut);
+end;
+
+procedure TAppActions.EditCopy(Sender: TObject);
+begin
+  if FocusedEdit <> nil then FocusedEdit.CopyToClipboard else Cmd(ecCopy);
+end;
+
+procedure TAppActions.EditPaste(Sender: TObject);
+begin
+  if FocusedEdit <> nil then FocusedEdit.PasteFromClipboard else Cmd(ecPaste);
+end;
 procedure TAppActions.EditIndent(Sender: TObject); begin Cmd(ecBlockIndent); end;
 procedure TAppActions.EditUnindent(Sender: TObject);begin Cmd(ecBlockUnindent); end;
 procedure TAppActions.EditDeleteLine(Sender: TObject);begin Cmd(ecDeleteLine); end;
@@ -1052,7 +1079,10 @@ begin
     FOnCommandPalette(Self);
 end;
 
-procedure TAppActions.SelSelectAll(Sender: TObject); begin Cmd(ecSelectAll); end;
+procedure TAppActions.SelSelectAll(Sender: TObject);
+begin
+  if FocusedEdit <> nil then FocusedEdit.SelectAll else Cmd(ecSelectAll);
+end;
 
 // Ed = nil sur un doc hex: les actions Selection y sont sans objet
 
