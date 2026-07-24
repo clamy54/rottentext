@@ -19,6 +19,7 @@ type
     procedure SetupSteadyCaret(AColor: TColor);
     // SynEdit n'a qu'une couleur de selection: on la swappe au focus
     procedure SyncSelectionFocus;
+    procedure SetSelectionFocus(AFocused: Boolean);
   end;
 
   // AddCaretAtLogPos (public) ne survit pas: seul le chemin interne
@@ -90,26 +91,33 @@ begin
     ActiveMode := DefaultMode;
 end;
 
-procedure TRTSynEdit.SyncSelectionFocus;
+procedure TRTSynEdit.SetSelectionFocus(AFocused: Boolean);
 begin
   // la LCL envoie un CM_EXIT pendant la destruction, SelectedColor est deja libere -> AV
   if csDestroying in ComponentState then Exit;
-  if Focused then
+  if AFocused then
     SelectedColor.Background := clSelectionBg
   else
     SelectedColor.Background := clSelectionInactive;
 end;
 
+procedure TRTSynEdit.SyncSelectionFocus;
+begin
+  SetSelectionFocus(Focused);
+end;
+
+// se fier a l'evenement, pas a Focused: sur Cocoa 4.8 le flag n'est pas
+// encore pose quand DoEnter fire, la couleur active n'arrivait jamais
 procedure TRTSynEdit.DoEnter;
 begin
   inherited DoEnter;
-  SyncSelectionFocus;
+  SetSelectionFocus(True);
 end;
 
 procedure TRTSynEdit.DoExit;
 begin
   inherited DoExit;
-  SyncSelectionFocus;
+  SetSelectionFocus(False);
 end;
 
 procedure TRTSynEdit.SetupSteadyCaret(AColor: TColor);
