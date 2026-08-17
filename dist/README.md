@@ -82,6 +82,22 @@ Debian/Ubuntu `.deb`.
    for properly sized icons). Output:
    `dist/linux/build/rottentext_<version>_<arch>.deb`.
 
+**Arch Linux**: `linux/archlinux/PKGBUILD`, same layout, but unsupported. Two
+dependencies come from AUR and `makepkg` will not resolve them, so install them
+first:
+
+```sh
+yay -S gtk2 lazarus-gtk2      # or paru -S
+cd dist/linux/archlinux
+makepkg -si
+```
+
+Neither GTK+2 nor its LCL variant is in the official repositories any more —
+Arch ships `lazarus-qt5` and `lazarus-qt6` only. The `PKGBUILD` also declares
+`pango` and `fontconfig`, which `uFontEmbed` opens with `dlopen` to register
+the embedded Monaspace fonts: nothing links against them, so no packaging tool
+can infer them.
+
 **Layout note.** The binary is *not* installed as `/usr/bin/rottentext`. Since
 the loaders look for `syntax/` and `themes/` next to the executable, everything
 lives in `/usr/lib/rottentext/`, and `/usr/bin/rottentext` is a small wrapper

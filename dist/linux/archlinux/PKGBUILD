@@ -1,0 +1,122 @@
+# Maintainer: Cyril Lamy <root@be-root.com>
+#
+# Layout identique au .deb, et pour la meme raison: le binaire N'EST PAS dans
+# /usr/bin. Les loaders cherchent syntax/ et themes/ A COTE de l'executable
+# (ExtractFilePath(ParamStr(0))), donc un /usr/bin/rottentext nu irait chercher
+# /usr/bin/syntax/. Tout vit dans /usr/lib/rottentext/ et /usr/bin/rottentext
+# est un WRAPPER qui fait exec sur le vrai binaire: exec remplace argv[0] par le
+# chemin reel. Un lien symbolique ne suffirait PAS, argv[0] resterait
+# /usr/bin/rottentext.
+#
+# Empaquetage non officiellement supporte.
+
+pkgname=rottentext
+pkgver=1.3
+pkgrel=1
+pkgdesc='A rotten editor for rotten files and rotten days'
+arch=('x86_64')
+url='https://github.com/clamy54/rottentext'
+license=('GPL-3.0-or-later')
+
+# Deux familles de dependances, et la seconde est le piege:
+#
+#  - LIEES au binaire (gtk2, libx11): l'editeur de liens les inscrit, namcap
+#    les retrouve seul.
+#  - ouvertes par DLOPEN (pango, fontconfig): invisibles pour l'editeur de
+#    liens comme pour namcap, qui ne lisent que la table des symboles.
+#    uFontEmbed charge libfontconfig.so.1, libpangocairo-1.0.so.0 et
+#    libpangoft2-1.0.so.0 a l'execution, pour enregistrer les Monaspace
+#    embarquees dans le binaire. gtk2 les tire aujourd'hui de toute facon, mais
+#    s'en remettre aux dependances d'un autre paquet est un pari, pas une regle:
+#    le jour ou elles changent, c'est notre police qui disparait.
+depends=(
+  # ATTENTION: gtk2 n'est PLUS dans les depots officiels d'Arch, il vient
+  # d'AUR, comme lazarus-gtk2 ci-dessous. makepkg seul ne les resoudra pas:
+  #   yay -S gtk2 lazarus-gtk2
+  'gtk2'
+  'libx11'
+  'pango'
+  'fontconfig'
+)
+
+# lazarus tire fpc et fpc-src. lazarus-gtk2 vient d'AUR: le paquet lazarus
+# officiel ne livre que les unites LCL qt5 et qt6, aucune gtk2, et sans lui
+# lazbuild voudrait compiler la LCL gtk2 lui-meme et l'ecrire dans
+# /usr/lib/lazarus, ou makepkg n'a pas les droits. Le declarer ici fait echouer
+# tot, avec un message clair, plutot qu'au milieu de la compilation.
+# imagemagick sert aux icones redimensionnees.
+makedepends=('lazarus' 'lazarus-gtk2' 'imagemagick')
+
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+
+# Empreinte de l'archive du tag, pas un SKIP: le tag d'une version publiee ne
+# bouge plus. A REGENERER a chaque montee de version (`updpkgsums`), sinon
+# makepkg refusera une source pourtant legitime.
+sha256sums=('76c282914c083d2828788eac5070cdf53518023ecb6c8bd0927cb66402d419d4')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+
+  # lazbuild lit le repertoire Lazarus dans sa configuration primaire. Sous
+  # makepkg celle-ci est neuve et vide, et lazbuild s'arrete alors sur
+  # « Invalid Lazarus directory "": directory lcl not found » -- message qui ne
+  # dit pas qu'il suffisait de le nommer. On le nomme donc, sur place: la
+  # version publiee de build.sh ne sait pas encore le chercher seule.
+  sed -i 's|^"\$lazbuild" \$buildarg|"$lazbuild" --lazarusdir=/usr/lib/lazarus $buildarg|' \
+    scripts/build.sh
+  grep -q -- '--lazarusdir' scripts/build.sh || {
+    echo "le correctif lazarusdir n'a pas pris: scripts/build.sh a change" >&2
+    return 1
+  }
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  bash scripts/build.sh --release
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+
+  # binaire + donnees runtime, cote a cote (contrainte des loaders)
+  install -Dm755 RottenText "$pkgdir/usr/lib/$pkgname/RottenText"
+  cp -r syntax "$pkgdir/usr/lib/$pkgname/"
+  cp -r themes "$pkgdir/usr/lib/$pkgname/"
+  chmod -R a+rX "$pkgdir/usr/lib/$pkgname/syntax" "$pkgdir/usr/lib/$pkgname/themes"
+
+  # « $@ » et non rien: c'est lui qui transmet le fichier a ouvrir, celui que le
+  # .desktop passe via « %f ».
+  install -d "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/$pkgname" <<'EOF'
+#!/bin/sh
+exec /usr/lib/rottentext/RottenText "$@"
+EOF
+  chmod 0755 "$pkgdir/usr/bin/$pkgname"
+
+  # Le .desktop ne declare que des types MIME STANDARD (text/plain, json, xml,
+  # yaml): ils sont deja definis par shared-mime-info, il n'y a donc aucun
+  # fichier de type a livrer. Aucun script post-installation non plus: pacman
+  # regenere les caches desktop et icones par ses propres hooks.
+  install -Dm644 dist/linux/rottentext.desktop \
+    "$pkgdir/usr/share/applications/$pkgname.desktop"
+
+  # La source n'est PAS carree (629x754): on la met au carre avec du
+  # transparent plutot que de la deformer.
+  local _s
+  for _s in 16 24 32 48 64 128 256; do
+    install -d "$pkgdir/usr/share/icons/hicolor/${_s}x${_s}/apps"
+    magick icons/rottentext.png -resize "${_s}x${_s}" -background none \
+      -gravity center -extent "${_s}x${_s}" \
+      "$pkgdir/usr/share/icons/hicolor/${_s}x${_s}/apps/$pkgname.png"
+    chmod 0644 "$pkgdir/usr/share/icons/hicolor/${_s}x${_s}/apps/$pkgname.png"
+  done
+
+  # Les Monaspace sont COMPILEES DANS le binaire (ressources RCDATA): l'OFL
+  # impose que son texte accompagne meme une distribution binaire seule, d'ou
+  # la licence tierce ici et pas seulement le copyright du projet.
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 LICENSE_THIRD_PARTIES.md \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE_THIRD_PARTIES.md"
+  install -Dm644 licenses/OFL-1.1-Monaspace.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-Monaspace.txt"
+}
