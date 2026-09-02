@@ -66,6 +66,7 @@ type
     procedure CtxMoveGroup(Sender: TObject);
   protected
     procedure Paint; override;
+    procedure Resize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -512,6 +513,14 @@ begin
     Canvas.Line(mx, 3, mx, ClientHeight - 3);
     Canvas.Pen.Width := 1;
   end;
+end;
+
+procedure TTabBar.Resize;
+begin
+  inherited Resize;
+  // gtk2 n'invalide que la bande nouvellement exposee: le '+' (ancre a droite)
+  // et les fleches restaient peints a leur ancienne position
+  Invalidate;
 end;
 
 function TTabBar.TabAt(X: Integer; out AClose: Boolean): Integer;
