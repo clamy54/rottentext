@@ -57,11 +57,11 @@ jobs:
         # la distribution aarch64 officielle 4.8, celle testee en local.
         # SourceForge bride le debit au point de faire sauter le timeout du
         # job: on sert d'abord le miroir GitHub (release du depot
-        # clamy54/lazarus-macos-mirror, memes fichiers), SourceForge n'est
+        # clamy54/lazarus-mirror, memes fichiers), SourceForge n'est
         # plus que le secours. Le cache d'actions ci-dessus evite meme ce
         # premier telechargement d'un run au suivant.
         run: |
-          mirror="https://github.com/clamy54/lazarus-macos-mirror/releases/download/lazarus-4.8-aarch64"
+          mirror="https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-aarch64"
           sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.8"
           dl="$HOME/laz-dl"; mkdir -p "$dl"
           fetch() {  # $1 nom du fichier; garde la copie du cache si elle est la
