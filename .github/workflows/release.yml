@@ -46,21 +46,39 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Cache des installeurs FPC et Lazarus
+        uses: actions/cache@v4
+        with:
+          path: ~/laz-dl
+          key: laz-macos-aarch64-4.8-fpc-3.2.4rc1a
       - name: Installer Lazarus 4.8 aarch64
         # pas setup-lazarus ici: sur macOS il ne pose que la variante x86_64
         # (l'app sortirait en Intel/Rosetta) et s'arrete a 4.4. On installe
         # la distribution aarch64 officielle 4.8, celle testee en local.
+        # SourceForge bride le debit au point de faire sauter le timeout du
+        # job: on sert d'abord le miroir GitHub (release du depot
+        # clamy54/lazarus-macos-mirror, memes fichiers), SourceForge n'est
+        # plus que le secours. Le cache d'actions ci-dessus evite meme ce
+        # premier telechargement d'un run au suivant.
         run: |
-          base="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.8"
-          curl -fsSL -o /tmp/fpc.dmg "$base/fpc-3.2.4rc1a.intelarm64-macosx.dmg/download"
-          sudo hdiutil attach -noautoopen /tmp/fpc.dmg
+          mirror="https://github.com/clamy54/lazarus-macos-mirror/releases/download/lazarus-4.8-aarch64"
+          sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.8"
+          dl="$HOME/laz-dl"; mkdir -p "$dl"
+          fetch() {  # $1 nom du fichier; garde la copie du cache si elle est la
+            [ -s "$dl/$1" ] && { echo "$1: depuis le cache"; return 0; }
+            curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && { echo "$1: depuis le miroir GitHub"; return 0; }
+            echo "$1: miroir indisponible, repli SourceForge" >&2
+            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+          }
+          fetch fpc-3.2.4rc1a.intelarm64-macosx.dmg
+          fetch lazarus-darwin-aarch64-4.8.zip
+          sudo hdiutil attach -noautoopen "$dl/fpc-3.2.4rc1a.intelarm64-macosx.dmg"
           # le dmg 3.2.4rc1a monte en fpc-3.2.4rc1...-flat: glob sur fpc-*
           pkg="$(find /Volumes/fpc-* -maxdepth 1 \( -name '*.mpkg' -o -name '*.pkg' \) | head -1)"
           [ -n "$pkg" ] || { echo "paquet FPC introuvable dans le dmg" >&2; ls /Volumes >&2; exit 1; }
           sudo installer -package "$pkg" -target /
           sudo hdiutil detach /Volumes/fpc-*
-          curl -fsSL -o /tmp/lazarus.zip "$base/lazarus-darwin-aarch64-4.8.zip/download"
-          unzip -q /tmp/lazarus.zip -d "$HOME/laz"
+          unzip -q "$dl/lazarus-darwin-aarch64-4.8.zip" -d "$HOME/laz"
           # la config portable du zip pointe /Developer/lazarus, inaccessible
           # (racine scellee SSV): on la fait pointer sur l'emplacement reel
           cfg="$HOME/laz/lazarus/config/environmentoptions.xml"
@@ -91,11 +109,34 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Installer Lazarus
-        uses: gcarreno/setup-lazarus@v3
+      - name: Cache des paquets FPC et Lazarus
+        uses: actions/cache@v4
         with:
-          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
-          with-cache: false  # le service de cache repond 400 et l'action saute alors le vrai telechargement
+          path: ~/laz-dl
+          key: laz-linux-amd64-4.8-fpc-3.2.2
+      - name: Installer Lazarus 4.8
+        # plus setup-lazarus: il s'arrete a 4.4 et tire tout de SourceForge,
+        # qui bride les runners GitHub jusqu'au timeout. Les .deb officiels
+        # 4.8 viennent du miroir clamy54/lazarus-mirror, SourceForge en secours.
+        run: |
+          mirror="https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-linux-amd64"
+          sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20Linux%20amd64%20DEB/Lazarus%204.8"
+          dl="$HOME/laz-dl"; mkdir -p "$dl"
+          fetch() {
+            [ -s "$dl/$1" ] && { echo "$1: depuis le cache"; return 0; }
+            curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && { echo "$1: depuis le miroir GitHub"; return 0; }
+            echo "$1: miroir indisponible, repli SourceForge" >&2
+            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+          }
+          fetch fpc-laz_3.2.2-210709_amd64.deb
+          fetch fpc-src_3.2.2-210709_amd64.deb
+          fetch lazarus-project_4.8.0-0_amd64.deb
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            "$dl/fpc-laz_3.2.2-210709_amd64.deb" \
+            "$dl/fpc-src_3.2.2-210709_amd64.deb" \
+            "$dl/lazarus-project_4.8.0-0_amd64.deb"
+          lazbuild --version
       - name: Dependances d'empaquetage
         # dpkg-shlibdeps (dpkg-dev) pour les Depends, imagemagick pour les icones
         run: |
@@ -117,11 +158,31 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Installer Lazarus
-        uses: gcarreno/setup-lazarus@v3
+      - name: Cache de l'installeur Lazarus
+        uses: actions/cache@v4
         with:
-          lazarus-version: "4.4"  # 4.8 pas encore proposee par setup-lazarus
-          with-cache: false  # le service de cache repond 400 et l'action saute alors le vrai telechargement
+          path: ~/laz-dl
+          key: laz-win64-4.8-fpc-3.2.2
+      - name: Installer Lazarus 4.8
+        # plus setup-lazarus: il s'arrete a 4.4 et tire tout de SourceForge,
+        # qui bride les runners GitHub jusqu'au timeout. L'installeur officiel
+        # 4.8 vient du miroir clamy54/lazarus-mirror, SourceForge en secours.
+        # Install silencieuse dans C:\lazarus, un des chemins que build.ps1 sonde.
+        run: |
+          $name = "lazarus-4.8-fpc-3.2.2-win64.exe"
+          $mirror = "https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-win64/$name"
+          $sf = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%204.8/$name/download"
+          $dl = Join-Path $HOME "laz-dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $exe = Join-Path $dl $name
+          if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 0) {
+            Write-Output "${name}: depuis le cache"
+          } else {
+            try { curl.exe -fsSL --retry 3 -o $exe $mirror; if ($LASTEXITCODE -ne 0) { throw "miroir" }; Write-Output "${name}: depuis le miroir GitHub" }
+            catch { Write-Warning "${name}: miroir indisponible, repli SourceForge"; curl.exe -fsSL --retry 3 -o $exe $sf; if ($LASTEXITCODE -ne 0) { throw "telechargement impossible" } }
+          }
+          Start-Process -Wait -FilePath $exe -ArgumentList '/VERYSILENT','/NORESTART','/SP-','/SUPPRESSMSGBOXES','/DIR=C:\lazarus'
+          if (-not (Test-Path 'C:\lazarus\lazbuild.exe')) { throw "lazbuild.exe absent apres installation" }
+          & 'C:\lazarus\lazbuild.exe' --version
       - name: Verifier Inno Setup 6
         # preinstalle sur windows-latest, ceinture et bretelles si l'image change
         run: |
