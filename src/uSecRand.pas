@@ -24,6 +24,16 @@ end;
 uses
   BaseUnix;
 
+// pas dans BaseUnix (fpc 3.2.2): valeurs de linux.pp / fcntl.h macOS
+const
+  {$IF DEFINED(LINUX)}
+  O_CLOEXEC = $80000;
+  {$ELSEIF DEFINED(DARWIN)}
+  O_CLOEXEC = $1000000;
+  {$ELSE}
+  O_CLOEXEC = 0;
+  {$ENDIF}
+
 function SecureRandomBytes(out ABuf; ACount: Integer): Boolean;
 var
   fd: cint;
