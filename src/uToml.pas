@@ -220,7 +220,7 @@ begin
           net := Pos(']]', m);
           u.Key := Trim(Copy(raw, eq + 2, net - eq - 2));
         end
-        else if t[Length(t)] = ']' then
+        else if (t[Length(t)] = ']') and ((Length(t) < 2) or (t[2] <> '[')) then
         begin
           u.Kind := tkHeader;
           eq := Pos('[', m);
@@ -327,7 +327,7 @@ begin
         + ' values not type-validated)', [nTab, nKey])
     else
     begin
-      if nBad > MAX_SHOWN + 1 then
+      if nBad > MAX_SHOWN then
         outp.Add(Format('  ... and %d more', [nBad - MAX_SHOWN]));
       Result := Format('%d problem(s):', [nBad]) + LineEnding + outp.Text;
     end;

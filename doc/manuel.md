@@ -53,10 +53,12 @@ Pour les trois personnes qui insistent. Il te faut :
 - Les paquets Lazarus : `SynEdit`, `LCL`, `Printer4Lazarus` (`lazbuild` tire les
   dépendances transitives tout seul).
 - Les polices **Monaspace Frozen** dans `fonts/` : 5 familles fois 4 styles, 20
-  fichiers TTF au total. Le build les compile dans le binaire sous forme de
-  ressources, donc le programme final embarque ses propres polices et se moque de
-  ce qui traîne d'installé sur l'hôte. Récupère-les depuis l'archive de release de
-  Monaspace. Oui, les vingt. Non, tu ne peux pas sauter les italiques.
+  fichiers TTF au total, plus les 4 styles de **JetBrains Mono NL Nerd Font
+  Mono**. Le build les compile dans le binaire sous forme de ressources, donc le
+  programme final embarque ses propres polices et se moque de ce qui traîne
+  d'installé sur l'hôte. Récupère-les depuis les archives de release de Monaspace
+  et de Nerd Fonts. Oui, les vingt-quatre. Non, tu ne peux pas sauter les
+  italiques.
 
 Ensuite :
 
@@ -126,6 +128,10 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
 - **Thèmes** : une douzaine, changeables à chaud. La barre de menu reste claire dans
   tous les thèmes, exprès. Si ça jure avec ton thème sombre, c'est un choix assumé,
   pas un bug à signaler.
+- **Police de l'éditeur** (`View > Font...`) : famille parmi les polices
+  embarquées (les cinq Monaspace et JetBrains Mono Nerd Font) et taille.
+  Sauvegardée dans les préférences, prime sur la police du thème ; "Theme
+  Default" rend la main au thème.
 - **Barre latérale** avec une liste des fichiers ouverts et une arborescence de
   dossier ("Open Folder"). L'arbre surveille le disque sous Windows et se rafraîchit
   quand un build ou un log remue le dossier sous tes pieds.
@@ -469,5 +475,6 @@ RottenText est publié sous licence GPL-V2.
 Développé par Cyril LAMY.
 
 Il utilise la famille de polices Monaspace : https://monaspace.githubnext.com/
+et JetBrains Mono NL, patchée Nerd Fonts : https://www.nerdfonts.com/
 
 Sources et releases : https://github.com/clamy54/rottentext

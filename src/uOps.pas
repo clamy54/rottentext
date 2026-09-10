@@ -204,7 +204,14 @@ begin
     ipad[i] := Chr(Byte(key[i]) xor $36);
     opad[i] := Chr(Byte(key[i]) xor $5C);
   end;
-  Result := HexOf(HashRawS(AKind, opad + HashRawS(AKind, ipad + AMessage)));
+  try
+    Result := HexOf(HashRawS(AKind, opad + HashRawS(AKind, ipad + AMessage)));
+  finally
+    // copies de la cle (pads = cle xor constante) : zeroisees
+    FillChar(key[1], Length(key), 0);
+    FillChar(ipad[1], Length(ipad), 0);
+    FillChar(opad[1], Length(opad), 0);
+  end;
 end;
 
 function B64Encode(const S: RawByteString): string;

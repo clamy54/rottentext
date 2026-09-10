@@ -11,7 +11,7 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
       <Icon Value="0"/>
-      <Resources Count="21">
+      <Resources Count="25">
         <Resource_0 FileName="fonts/MonaspaceNeonFrozen-Regular.ttf" Type="RCDATA" ResourceName="NEON_REGULAR"/>
         <Resource_1 FileName="fonts/MonaspaceNeonFrozen-Bold.ttf" Type="RCDATA" ResourceName="NEON_BOLD"/>
         <Resource_2 FileName="fonts/MonaspaceNeonFrozen-Italic.ttf" Type="RCDATA" ResourceName="NEON_ITALIC"/>
@@ -32,7 +32,11 @@
         <Resource_17 FileName="fonts/MonaspaceKryptonFrozen-Bold.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLD"/>
         <Resource_18 FileName="fonts/MonaspaceKryptonFrozen-Italic.ttf" Type="RCDATA" ResourceName="KRYPTON_ITALIC"/>
         <Resource_19 FileName="fonts/MonaspaceKryptonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLDITALIC"/>
-        <Resource_20 FileName="icons/rottentext-256.png" Type="RCDATA" ResourceName="APPICON_PNG"/>
+        <Resource_20 FileName="fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_REGULAR"/>
+        <Resource_21 FileName="fonts/JetBrainsMonoNLNerdFontMono-Bold.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_BOLD"/>
+        <Resource_22 FileName="fonts/JetBrainsMonoNLNerdFontMono-Italic.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_ITALIC"/>
+        <Resource_23 FileName="fonts/JetBrainsMonoNLNerdFontMono-BoldItalic.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_BOLDITALIC"/>
+        <Resource_24 FileName="icons/rottentext-256.png" Type="RCDATA" ResourceName="APPICON_PNG"/>
       </Resources>
     </General>
     <BuildModes>
@@ -132,6 +136,10 @@ if TargetOS = &apos;darwin&apos; then
       </Unit>
       <Unit>
         <Filename Value="src/uFontEmbed.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uFontDlg.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

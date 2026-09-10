@@ -908,7 +908,7 @@ begin
   end;
   syn := ActiveSyn;
   if (syn = nil) or (FFindEdit.Text = '') then Exit;
-  if syn.SelAvail then start := syn.BlockEnd else start := syn.CaretXY;
+  if syn.SelAvail then start := syn.BlockEnd else start := syn.LogicalCaretXY; // SearchReplaceEx compare en octets
   if FOptInSel and (CmpPt(start, FSelB) < 0) then start := FSelB;
   found := FindFrom(syn, start, False);
   if (not found) and FOptWrap then
@@ -934,7 +934,7 @@ begin
   end;
   syn := ActiveSyn;
   if (syn = nil) or (FFindEdit.Text = '') then Exit;
-  if syn.SelAvail then start := syn.BlockBegin else start := syn.CaretXY;
+  if syn.SelAvail then start := syn.BlockBegin else start := syn.LogicalCaretXY;
   if FOptInSel and (CmpPt(start, FSelE) > 0) then start := FSelE;
   found := FindFrom(syn, start, True);
   if (not found) and FOptWrap then
@@ -1032,7 +1032,7 @@ begin
       delta := Length(repl) - Length(syn.SelText);
       syn.SelText := repl;
       Inc(n);
-      start := syn.CaretXY;
+      start := syn.LogicalCaretXY;
       // la borne de region glisse si le remplacement change la longueur
       if FOptInSel and (start.Y = FSelE.Y) then
         Inc(FSelE.X, delta);

@@ -51,10 +51,11 @@ For the three people who insist. You need:
 - Lazarus packages: `SynEdit`, `LCL`, `Printer4Lazarus` (`lazbuild` pulls the
   transitive dependencies on its own).
 - The **Monaspace Frozen** fonts in `fonts/`: 5 families times 4 styles, 20 TTF
-  files total. The build compiles them into the binary as resources, so the final
-  program carries its own fonts and does not care what garbage is installed on the
-  host. Get them from the Monaspace release archive. Yes, all twenty. No, you
-  cannot skip the italics.
+  files total, plus the 4 **JetBrains Mono NL Nerd Font Mono** styles. The build
+  compiles them into the binary as resources, so the final program carries its
+  own fonts and does not care what garbage is installed on the host. Get them
+  from the Monaspace and Nerd Fonts release archives. Yes, all twenty-four. No,
+  you cannot skip the italics.
 
 Then:
 
@@ -118,6 +119,10 @@ The part that opens files. Kept deliberately boring. Highlights:
 - **Themes**: a dozen of them, switchable live. The menu bar stays light on every
   theme, on purpose. If it clashes with your dark theme, that's a deliberate
   choice, not a bug to file.
+- **Editor font** (`View > Font...`): family among the embedded ones (the five
+  Monaspace flavours and JetBrains Mono Nerd Font) and size. Saved in the
+  preferences, wins over the theme's font; "Theme Default" hands control back
+  to the theme.
 - **Sidebar** with an open-files list and a folder tree ("Open Folder"). The tree
   watches the disk on Windows and refreshes itself when a build or a log churns the
   directory under you.
@@ -443,5 +448,6 @@ RottenText is released under the GPL-V2 license.
 Developed by Cyril LAMY.
 
 It uses the Monaspace font family: https://monaspace.githubnext.com/
+and JetBrains Mono NL, Nerd Fonts patched: https://www.nerdfonts.com/
 
 Source and releases: https://github.com/clamy54/rottentext

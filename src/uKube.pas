@@ -210,8 +210,9 @@ begin
       key := Trim(Copy(ln, 1, eq - 1));
       val := EnvDecodeValue(Trim(Copy(ln, eq + 1, MaxInt)));
       if not ValidSecretKey(key) then Continue;
-      // quote YAML sinon true/123 cesseraient d'etre des strings
-      res.Add('  ' + key + ': ' + YamlQuoteScalar(val));
+      // quote YAML sinon true/123 cesseraient d'etre des strings ;
+      // multi-ligne en bloc | (script, PEM) plutot qu'une ligne d'echappes
+      YamlEmitScalar(res, '  ' + key + ': ', val, 2);
     end;
     Result := res.Text;
   finally

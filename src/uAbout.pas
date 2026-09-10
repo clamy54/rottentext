@@ -88,7 +88,7 @@ begin
     f.Position := poMainFormCenter;
     f.Color := clEditorBg;
     f.Width := 440;
-    f.Height := 420;
+    f.Height := 470;
 
     img := TImage.Create(f);
     img.Parent := f;
@@ -124,6 +124,10 @@ begin
     AddLabel(f, y, 'RottenText uses the Monaspace font family:', False);
     Inc(y, 22);
     AddLabel(f, y, 'https://monaspace.githubnext.com/', True);
+    Inc(y, 30);
+    AddLabel(f, y, 'and JetBrains Mono NL, Nerd Fonts patched:', False);
+    Inc(y, 22);
+    AddLabel(f, y, 'https://www.nerdfonts.com/', True);
 
     b := TButton.Create(f);
     b.Parent := f;

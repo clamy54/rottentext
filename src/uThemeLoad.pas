@@ -21,6 +21,15 @@ function ApplyThemeFile(const AFileName: string): Boolean;
 // a appeler APRES LoadEmbeddedFonts: ResolveMonaspace a besoin des polices chargees
 procedure ApplyDefaultTheme;
 
+// pref View > Font..., prime sur editorFont/editorFontSize du theme ('' / 0 = theme)
+const
+  PREF_FONT_SIZE_MIN = 6;
+  PREF_FONT_SIZE_MAX = 72;
+var
+  PrefEditorFontKey: string = '';
+  PrefEditorFontSize: Integer = 0;
+procedure ReapplyEditorFont; // recharge le theme courant + pref
+
 implementation
 
 uses
@@ -186,7 +195,18 @@ begin
   jd := AObj.Find(AKey);
   if (jd = nil) or (jd.JSONType <> jtNumber) then Exit;
   n := jd.AsInteger;
-  if (n >= 6) and (n <= 72) then ADest := n; // police geante = gel
+  if (n >= PREF_FONT_SIZE_MIN) and (n <= PREF_FONT_SIZE_MAX) then ADest := n; // police geante = gel
+end;
+
+procedure ApplyEditorFontPref;
+var
+  full: string;
+begin
+  full := ResolveMonaspace(PrefEditorFontKey);
+  if full <> '' then RTEditorFont := full;
+  if (PrefEditorFontSize >= PREF_FONT_SIZE_MIN) and
+     (PrefEditorFontSize <= PREF_FONT_SIZE_MAX) then
+    RTEditorSize := PrefEditorFontSize;
 end;
 
 function ApplyTheme(AIndex: Integer): Boolean;
@@ -249,6 +269,7 @@ begin
     RTEditorFont := edF; RTEditorSize := edS;
     RTTabFont := tbF;    RTTabSize := tbS;
     RTSideFont := sdF;   RTSideSize := sdS;
+    ApplyEditorFontPref;
     FCurrent := AIndex;
     Result := True;
   finally
@@ -269,7 +290,15 @@ end;
 
 procedure ApplyDefaultTheme;
 begin
-  ApplyThemeFile(DEFAULT_THEME_FILE);
+  if not ApplyThemeFile(DEFAULT_THEME_FILE) then
+    ApplyEditorFontPref; // pas de themes/
+end;
+
+procedure ReapplyEditorFont;
+begin
+  if (FCurrent >= 0) and ApplyTheme(FCurrent) then Exit;
+  ApplyDefaultFonts;
+  ApplyEditorFontPref;
 end;
 
 function CurrentThemeFile: string;

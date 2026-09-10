@@ -110,17 +110,32 @@ end;
 
 function RdnAttrValue(const ADn: string; out AAttr, AValue: string): Boolean;
 var
-  comma, eq: Integer;
+  comma, eq, i: Integer;
   first: string;
 begin
   AAttr := ''; AValue := '';
-  comma := Pos(',', ADn);
+  // premiere virgule NON echappee (cn=Doe\, John,ou=...)
+  comma := 0;
+  i := 1;
+  while i <= Length(ADn) do
+  begin
+    if ADn[i] = '\' then Inc(i)
+    else if ADn[i] = ',' then begin comma := i; Break; end;
+    Inc(i);
+  end;
   if comma > 0 then first := Copy(ADn, 1, comma - 1) else first := ADn;
   first := Trim(first);
   eq := Pos('=', first);
   if eq = 0 then Exit(False);
   AAttr := Trim(Copy(first, 1, eq - 1));
   AValue := Trim(Copy(first, eq + 1, MaxInt));
+  // \X -> X : la valeur d'attribut est en clair, l'echappement est du DN
+  i := 1;
+  while i < Length(AValue) do
+  begin
+    if AValue[i] = '\' then Delete(AValue, i, 1);
+    Inc(i);
+  end;
   Result := (AAttr <> '') and (AValue <> '');
 end;
 

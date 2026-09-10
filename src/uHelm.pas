@@ -53,6 +53,7 @@ var
   seg, path: string;
 begin
   Result := TStringList.Create;
+  Result.CaseSensitive := True; // .Values.Image <> .Values.image
   Result.Sorted := True;
   Result.Duplicates := dupIgnore;
   n := Length(AText);
@@ -424,6 +425,14 @@ begin
   if trailDash then body := Trim(Copy(body, 1, Length(body) - 1));
   expr := Trim(body);
   if expr = '' then Exit;
+  // action de controle : `if x | quote` = toujours vrai, `end | quote` = erreur
+  i := 1;
+  while (i <= Length(expr)) and not (expr[i] in [' ', #9]) do Inc(i);
+  lastSeg := Copy(expr, 1, i - 1);
+  if (lastSeg = 'if') or (lastSeg = 'else') or (lastSeg = 'end') or
+     (lastSeg = 'range') or (lastSeg = 'with') or (lastSeg = 'define') or
+     (lastSeg = 'template') or (lastSeg = 'block') or (lastSeg = 'break') or
+     (lastSeg = 'continue') or (Copy(lastSeg, 1, 2) = '/*') then Exit;
   // dernier segment de pipe deja 'quote' -> idempotent
   bar := 0;
   for i := Length(expr) downto 1 do

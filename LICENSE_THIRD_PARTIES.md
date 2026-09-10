@@ -29,7 +29,7 @@ from memory.
 are compiled into the executable as RCDATA resources (see `src/uFontEmbed.pas`),
 so **the shipped binary itself contains the font software**. The `fonts/`
 directory is kept as the build-time source of those resources and as a runtime
-fallback.
+fallback. The editor font is picked in `View > Font...`.
 
 **Compliance notes:**
 
@@ -46,6 +46,33 @@ fallback.
 - The **Reserved Font Names** must not be used to name a modified version of the
   fonts. RottenText ships no modified version, so nothing to do — but do not
   rename/patch the TTFs and keep calling them "Monaspace".
+
+## 1b. JetBrains Mono NL, Nerd Fonts patched — SIL Open Font License 1.1
+
+| | |
+|---|---|
+| Upstream | <https://github.com/JetBrains/JetBrainsMono> (font), <https://github.com/ryanoasis/nerd-fonts> (patch) |
+| Copyright | Copyright 2020 The JetBrains Mono Project Authors — Reserved Font Name "JetBrains Mono" |
+| License | SIL Open Font License, Version 1.1 |
+| Full text | [`licenses/OFL-1.1-JetBrainsMono.txt`](licenses/OFL-1.1-JetBrainsMono.txt) |
+
+**Where it is used:** the 4 TTF files
+`fonts/JetBrainsMonoNLNerdFontMono-{Regular,Bold,Italic,BoldItalic}.ttf` are
+compiled into the executable the same way as Monaspace, and offered as an
+alternative editor font in `View > Font...`.
+
+**Compliance notes:**
+
+- The shipped files are the Nerd Fonts build (family name `JetBrainsMonoNL NFM`):
+  a Modified Version under the OFL, already renamed by the Nerd Fonts project
+  so as not to carry the Reserved Font Name. RottenText does not modify them
+  further.
+- The added icon glyphs come from third-party icon sets under their own
+  licenses (Font Awesome, Devicons, Octicons, Powerline, Material Design Icons,
+  Codicons, Seti-UI...), see the Nerd Fonts repository.
+- Same OFL obligations as Monaspace: keep
+  `licenses/OFL-1.1-JetBrainsMono.txt` in any redistribution, the fonts stay
+  under the OFL.
 
 ## 2. Lazarus LCL (Lazarus Component Library) — modified LGPL
 
@@ -136,12 +163,15 @@ or reworked.
 
 If you redistribute RottenText (source **or** binary), you must at least:
 
-1. Keep `licenses/OFL-1.1-Monaspace.txt` alongside it — the binary embeds the
-   Monaspace fonts, and the OFL requires its text to be distributed with them.
-   The fonts stay under the OFL; they are not relicensed by being embedded.
+1. Keep `licenses/OFL-1.1-Monaspace.txt` and
+   `licenses/OFL-1.1-JetBrainsMono.txt` alongside it — the binary embeds the
+   Monaspace and JetBrains Mono fonts, and the OFL requires its text to be
+   distributed with them. The fonts stay under the OFL; they are not relicensed
+   by being embedded.
 2. Keep this file and [`LICENSE`](LICENSE) (the GPL-2 terms of RottenText
    itself).
 3. Keep the dual MPL/GPL notice at the top of `src/uWrapView.pas` if you
    redistribute the source.
 4. Do not name a modified version of the fonts with a Reserved Font Name
-   ("Monaspace", "Argon", "Neon", "Xenon", "Radon", "Krypton").
+   ("Monaspace", "Argon", "Neon", "Xenon", "Radon", "Krypton",
+   "JetBrains Mono").

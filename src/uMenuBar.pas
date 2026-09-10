@@ -244,6 +244,7 @@ begin
       mi.Checked := (i = CurrentTheme);
     end;
   end;
+  AddItem(nil, m, 'Font...', @A.ViewFont);
   sub := AddItem(nil, m, 'Syntax', nil);
   mi := AddItem(sub, m, 'Plain Text', @A.SetSyntax); mi.Tag := 0;
   AddSep(sub, m);

@@ -8,7 +8,7 @@ unit uSideBar;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, LCLType, ExtCtrls, Forms, uTheme;
+  Classes, SysUtils, Controls, Graphics, LCLType, ExtCtrls, Forms, LazUTF8, uTheme;
 
 type
   TOpenFileEvent = procedure(const AFileName: string) of object;
@@ -262,22 +262,28 @@ begin
 end;
 
 procedure TSideBar.SetRoot(const APath: string);
+var
+  p: string;
 begin
+  // APath peut etre le Path d'un noeud qu'on va liberer (symlink vers un
+  // dossier clique comme fichier) : copie avant FreeAndNil
+  p := APath;
+  UniqueString(p);
   FSel := nil; // les noeuds vont etre liberes
   FreeAndNil(FRoot);
   FScroll := 0;
   FHot := -1;
   CacheClear;
   {$IFDEF WINDOWS}
-  FCacheOK := VolumeSupportsCache(APath);
+  FCacheOK := VolumeSupportsCache(p);
   {$ELSE}
   FCacheOK := False;
   {$ENDIF}
   FRoot := TSideNode.Create;
-  FRoot.Name := ExtractFileName(ExcludeTrailingPathDelimiter(APath));
+  FRoot.Name := ExtractFileName(ExcludeTrailingPathDelimiter(p));
   if FRoot.Name = '' then // racine de lecteur (D:\)
-    FRoot.Name := ExcludeTrailingPathDelimiter(APath);
-  FRoot.Path := ExcludeTrailingPathDelimiter(APath);
+    FRoot.Name := ExcludeTrailingPathDelimiter(p);
+  FRoot.Path := ExcludeTrailingPathDelimiter(p);
   FRoot.IsDir := True;
   FRoot.Expanded := True;
   RebuildRows;
@@ -690,10 +696,11 @@ begin
   clipR := ClientWidth - GRIP_W - SBW - 2;
   availW := clipR - tx;
   cap := f.Name;
-  while (Canvas.TextWidth(cap) > availW) and (Length(cap) > 1) do
-    cap := Copy(cap, 1, Length(cap) - 1);
+  // coupe par caractere, pas par octet : un UTF-8 tronque en plein milieu
+  while (Canvas.TextWidth(cap) > availW) and (UTF8Length(cap) > 1) do
+    cap := UTF8Copy(cap, 1, UTF8Length(cap) - 1);
   if cap <> f.Name then
-    cap := Copy(cap, 1, Length(cap) - 1) + '…';
+    cap := UTF8Copy(cap, 1, UTF8Length(cap) - 1) + '…';
   if active or hovered then
     Canvas.Font.Color := clSideTextHi
   else

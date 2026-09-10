@@ -51,12 +51,13 @@ chmod 0755 "$pkg/usr/bin/rottentext"
 
 install -m 0644 "$here/rottentext.desktop" "$pkg/usr/share/applications/rottentext.desktop"
 
-# Licences. Les polices Monaspace sont COMPILEES DANS le binaire (ressources
+# Licences. Les polices Monaspace et JetBrains Mono sont COMPILEES DANS le binaire (ressources
 # RCDATA), donc l'OFL impose que son texte accompagne meme une distribution
 # binaire seule -- d'ou licenses/ dans le paquet, pas seulement le copyright.
 install -m 0644 "$root/LICENSE" "$pkg/usr/share/doc/rottentext/copyright"
 install -m 0644 "$root/LICENSE_THIRD_PARTIES.md" "$pkg/usr/share/doc/rottentext/"
 install -m 0644 "$root/licenses/OFL-1.1-Monaspace.txt" "$pkg/usr/share/doc/rottentext/"
+install -m 0644 "$root/licenses/OFL-1.1-JetBrainsMono.txt" "$pkg/usr/share/doc/rottentext/"
 
 # Icones dans le theme hicolor. La source (icons/rottentext.png) n'est PAS
 # carree (629x754) : on la met au carre avec du transparent plutot que de la

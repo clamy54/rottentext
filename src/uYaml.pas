@@ -20,14 +20,18 @@ type
   public
     Kind: TYamlKind;
     Scalar: string;
+    // scalaire tel qu'ecrit (une ligne, commentaire retire) : reemis tel quel
+    // sinon 8080 / true / [a, b] ressortent quotes = type change. '' = aucun
+    Raw: string;
     Keys: array of string;
+    KeyRaws: array of string;   // idem pour les cles (on: / 80: / "80":)
     Vals: array of TYamlNode;   // paralleles a Keys
     Items: array of TYamlNode;
     constructor Create(AKind: TYamlKind);
     destructor Destroy; override;
     function Count: Integer;
     function ChildByKey(const AKey: string): TYamlNode;
-    procedure SetPair(const AKey: string; ANode: TYamlNode);
+    procedure SetPair(const AKey: string; ANode: TYamlNode; const ARaw: string = '');
     procedure PushItem(ANode: TYamlNode);
   end;
 
@@ -46,6 +50,9 @@ function YamlEmit(ANode: TYamlNode): string;
 procedure YamlSortKeys(ANode: TYamlNode);
 
 function YamlQuoteScalar(const S: string): string;
+
+// APrefix + scalaire ; multi-ligne = bloc litteral |, contenu a AIndent+2
+procedure YamlEmitScalar(ASL: TStrings; const APrefix, S: string; AIndent: Integer);
 
 const
   YAML_MAX_BYTES = 8 * 1024 * 1024;
@@ -87,7 +94,7 @@ begin
     if Keys[i] = AKey then Exit(Vals[i]);
 end;
 
-procedure TYamlNode.SetPair(const AKey: string; ANode: TYamlNode);
+procedure TYamlNode.SetPair(const AKey: string; ANode: TYamlNode; const ARaw: string);
 var
   i, n: Integer;
 begin
@@ -97,12 +104,15 @@ begin
       // cle en double : dernier gagne
       Vals[i].Free;
       Vals[i] := ANode;
+      KeyRaws[i] := ARaw;
       Exit;
     end;
   n := Length(Keys);
   SetLength(Keys, n + 1);
+  SetLength(KeyRaws, n + 1);
   SetLength(Vals, n + 1);
   Keys[n] := AKey;
+  KeyRaws[n] := ARaw;
   Vals[n] := ANode;
 end;
 
@@ -120,6 +130,7 @@ type
     Indent: Integer;
     Content: string;   // sans indentation, commentaire inclus
     Blank: Boolean;    // vide ou commentaire seul -> saute structurellement
+    Empty: Boolean;    // vraiment vide (Blank couvre aussi # et ---)
     LineNo: Integer;
   end;
   TYLines = array of TYLine;
@@ -138,7 +149,9 @@ begin
     begin
       if S[i] = q then q := #0;
     end
-    else if (S[i] = '"') or (S[i] = '''') then
+    // une quote n'ouvre qu'en tete de scalaire : don't panic # note
+    else if ((S[i] = '"') or (S[i] = '''')) and
+            ((i = 1) or (S[i - 1] in [' ', #9, '-', '['])) then
       q := S[i]
     else if (S[i] = '#') and ((i = 1) or (S[i - 1] = ' ') or (S[i - 1] = #9)) then
     begin
@@ -155,7 +168,6 @@ var
   raw: TStringList;
   i, j, ind: Integer;
   ln, body: string;
-  hasTab: Boolean;
 begin
   raw := TStringList.Create;
   try
@@ -168,12 +180,12 @@ begin
     for i := 0 to raw.Count - 1 do
     begin
       ln := raw[i];
+      // seuls les espaces indentent ; une tab reste dans le contenu (Makefile
+      // dans un bloc |) et n'est refusee que sur une ligne structurelle
       ind := 0;
-      hasTab := False;
       j := 1;
-      while (j <= Length(ln)) and ((ln[j] = ' ') or (ln[j] = #9)) do
+      while (j <= Length(ln)) and (ln[j] = ' ') do
       begin
-        if ln[j] = #9 then hasTab := True;
         Inc(ind);
         Inc(j);
       end;
@@ -181,9 +193,8 @@ begin
       L[i].LineNo := i + 1;
       L[i].Indent := ind;
       L[i].Content := body;
-      if hasTab and (body <> '') and (body[1] <> '#') then
-        raise EYamlError.CreateFmt('tab in indentation, line %d', [i + 1]);
-      L[i].Blank := (body = '') or (body[1] = '#') or (body = '---') or (body = '...');
+      L[i].Empty := Trim(body) = '';
+      L[i].Blank := L[i].Empty or (body[1] = '#') or (body = '---') or (body = '...');
     end;
   finally
     raw.Free;
@@ -207,9 +218,33 @@ begin
     Result := t;
 end;
 
+// \xXX \uXXXX \UXXXXXXXX -> UTF-8 ; hex incomplet = texte garde tel quel
+function HexEscape(const T: string; var I: Integer; ADigits: Integer): string;
+var
+  k, v: Integer;
+begin
+  Result := '';
+  if I + ADigits > Length(T) then Exit;
+  v := 0;
+  for k := 1 to ADigits do
+    case T[I + k] of
+      '0'..'9': v := v * 16 + Ord(T[I + k]) - Ord('0');
+      'a'..'f': v := v * 16 + Ord(T[I + k]) - Ord('a') + 10;
+      'A'..'F': v := v * 16 + Ord(T[I + k]) - Ord('A') + 10;
+      else Exit;
+    end;
+  if (v > $10FFFF) or ((v >= $D800) and (v <= $DFFF)) then Exit;
+  if v < $10000 then
+    Result := UTF8Encode(UnicodeString(WideChar(v)))
+  else
+    Result := UTF8Encode(UnicodeString(WideChar($D800 + ((v - $10000) shr 10)))
+      + UnicodeString(WideChar($DC00 + ((v - $10000) and $3FF))));
+  Inc(I, ADigits);
+end;
+
 function Unquote(const S: string): string;
 var
-  t: string;
+  t, h: string;
   i: Integer;
   c: Char;
 begin
@@ -238,6 +273,16 @@ begin
             '"': Result := Result + '"';
             '\': Result := Result + '\';
             '0': Result := Result + #0;
+            'x', 'u', 'U':
+              begin
+                case t[i] of
+                  'x': h := HexEscape(t, i, 2);
+                  'u': h := HexEscape(t, i, 4);
+                  else h := HexEscape(t, i, 8);
+                end;
+                if h = '' then Result := Result + '\' + t[i]
+                else Result := Result + h;
+              end;
             else Result := Result + t[i];
           end;
         end
@@ -266,7 +311,8 @@ begin
     begin
       if S[i] = q then q := #0;
     end
-    else if (S[i] = '"') or (S[i] = '''') then
+    else if ((S[i] = '"') or (S[i] = '''')) and
+            ((i = 1) or (S[i - 1] in [' ', #9, '-', '['])) then
       q := S[i]
     else if S[i] = ':' then
     begin
@@ -302,6 +348,9 @@ type
     L: TYLines;
     N: Integer;
     procedure SkipBlanks(var idx: Integer);
+    procedure CheckTab(idx: Integer);
+    function PlainContinuation(var idx: Integer; blockIndent: Integer;
+      const AFirst: string): string;
     function ParseBlockScalar(var idx: Integer; blockIndent: Integer;
       kindCh, chomp: Char): string;
     function ParseNode(var idx: Integer; minIndent, depth: Integer): TYamlNode;
@@ -312,10 +361,37 @@ begin
   while (idx < N) and L[idx].Blank do Inc(idx);
 end;
 
+procedure TYamlParser.CheckTab(idx: Integer);
+begin
+  if (L[idx].Content <> '') and (L[idx].Content[1] = #9) then
+    raise EYamlError.CreateFmt('tab in indentation, line %d', [L[idx].LineNo]);
+end;
+
+// scalaire nu replie sur des lignes plus indentees : `desc: un long`
+// / `  texte` = une valeur. idx pointe APRES la premiere ligne, avance sur
+// chaque ligne absorbee. Quotes multi-lignes non gerees (restent une erreur)
+function TYamlParser.PlainContinuation(var idx: Integer; blockIndent: Integer;
+  const AFirst: string): string;
+var
+  c: string;
+begin
+  Result := AFirst;
+  if (AFirst = '') or (AFirst[1] in ['"', '''', '[', '{', '*']) then Exit;
+  while idx < N do
+  begin
+    if L[idx].Empty then Break;
+    if L[idx].Blank or (L[idx].Indent <= blockIndent) then Break;
+    c := StripComment(L[idx].Content);
+    if (c = '') or IsListLine(c) or (MapColon(c) > 0) then Break;
+    Result := Result + ' ' + c;
+    Inc(idx);
+  end;
+end;
+
 function TYamlParser.ParseBlockScalar(var idx: Integer; blockIndent: Integer;
   kindCh, chomp: Char): string;
 var
-  first, rel: Integer;
+  first, rel, trail: Integer;
   parts: TStringList;
   sb: TStringBuilder;
   i: Integer;
@@ -325,12 +401,14 @@ begin
     first := -1;
     while idx < N do
     begin
-      if L[idx].Blank then
+      if L[idx].Empty then
       begin
         parts.Add('');
         Inc(idx);
         Continue;
       end;
+      // un # ou --- plus indente est du contenu (#!/bin/bash en tete de
+      // script), moins indente ferme le bloc
       if L[idx].Indent <= blockIndent then Break;
       if first < 0 then first := L[idx].Indent;
       rel := L[idx].Indent - first;
@@ -338,8 +416,12 @@ begin
       parts.Add(StringOfChar(' ', rel) + L[idx].Content);
       Inc(idx);
     end;
+    trail := 0;
     while (parts.Count > 0) and (parts[parts.Count - 1] = '') do
+    begin
       parts.Delete(parts.Count - 1);
+      Inc(trail);
+    end;
 
     // pas de concat : `txt := txt + parts[i]` est O(n^2) sur un gros bloc
     sb := TStringBuilder.Create;
@@ -365,7 +447,13 @@ begin
           sb.Append(parts[i]);
         end;
       end;
-      if chomp = '+' then sb.Append(#10);
+      // chomp : - rien, defaut = 1 seul \n final, + garde tout
+      if (parts.Count > 0) and (chomp <> '-') then
+      begin
+        sb.Append(#10);
+        if chomp = '+' then
+          for i := 1 to trail do sb.Append(#10);
+      end;
       Result := sb.ToString;
     finally
       sb.Free;
@@ -378,7 +466,7 @@ end;
 function TYamlParser.ParseNode(var idx: Integer; minIndent, depth: Integer): TYamlNode;
 var
   blockIndent, colon: Integer;
-  c, key, rest: string;
+  c, key, keyRaw, rest: string;
   kindCh, chomp: Char;
   itemNode, child: TYamlNode;
 begin
@@ -389,6 +477,7 @@ begin
   if idx >= N then Exit;
   if L[idx].Indent < minIndent then Exit;
 
+  CheckTab(idx);
   blockIndent := L[idx].Indent;
   c := StripComment(L[idx].Content);
 
@@ -400,6 +489,7 @@ begin
       SkipBlanks(idx);
       if idx >= N then Break;
       if L[idx].Indent <> blockIndent then Break;
+      CheckTab(idx);
       c := StripComment(L[idx].Content);
       if not IsListLine(c) then Break;
       rest := StripLeadingAnchor(Trim(Copy(c, 2, MaxInt)));
@@ -412,10 +502,12 @@ begin
       end
       else if MapColon(rest) > 0 then
       begin
-        // map compacte `- key: v` : reecrite en `key: v` a l'indent du contenu
-        L[idx].Content := StringOfChar(' ', blockIndent + 2) + rest;
-        L[idx].Indent := blockIndent + 2;
-        child := ParseNode(idx, blockIndent + 2, depth + 1);
+        // map compacte `- key: v` : reecrite en `key: v` a l'indent REEL du
+        // contenu (`-   key:` ou `- &a key:` = les freres ne sont pas a +2)
+        colon := blockIndent + Length(c) - Length(rest);
+        L[idx].Content := rest;
+        L[idx].Indent := colon;
+        child := ParseNode(idx, colon, depth + 1);
         if child = nil then child := TYamlNode.Create(ykScalar);
         Result.PushItem(child);
       end
@@ -434,7 +526,14 @@ begin
           itemNode := TYamlNode.Create(ykScalar);
           if rest = '[]' then itemNode.Kind := ykList
           else if rest = '{}' then itemNode.Kind := ykMap
-          else itemNode.Scalar := Unquote(rest);
+          else
+          begin
+            Inc(idx);
+            rest := PlainContinuation(idx, blockIndent, rest);
+            itemNode.Scalar := Unquote(rest);
+            itemNode.Raw := rest;
+            Dec(idx);
+          end;
           Result.PushItem(itemNode);
           Inc(idx);
         end;
@@ -452,11 +551,13 @@ begin
       SkipBlanks(idx);
       if idx >= N then Break;
       if L[idx].Indent <> blockIndent then Break;
+      CheckTab(idx);
       c := StripComment(L[idx].Content);
       if IsListLine(c) then Break;
       colon := MapColon(c);
       if colon = 0 then Break;
-      key := Unquote(Trim(Copy(c, 1, colon - 1)));
+      keyRaw := Trim(Copy(c, 1, colon - 1));
+      key := Unquote(keyRaw);
       rest := StripLeadingAnchor(Trim(Copy(c, colon + 1, MaxInt)));
 
       if rest = '' then
@@ -464,7 +565,7 @@ begin
         Inc(idx);
         child := ParseNode(idx, blockIndent + 1, depth + 1);
         if child = nil then child := TYamlNode.Create(ykScalar);
-        Result.SetPair(key, child);
+        Result.SetPair(key, child, keyRaw);
       end
       else
       begin
@@ -474,15 +575,22 @@ begin
           Inc(idx);
           child := TYamlNode.Create(ykScalar);
           child.Scalar := ParseBlockScalar(idx, blockIndent, kindCh, chomp);
-          Result.SetPair(key, child);
+          Result.SetPair(key, child, keyRaw);
         end
         else
         begin
           child := TYamlNode.Create(ykScalar);
           if rest = '[]' then child.Kind := ykList
           else if rest = '{}' then child.Kind := ykMap
-          else child.Scalar := Unquote(rest);
-          Result.SetPair(key, child);
+          else
+          begin
+            Inc(idx);
+            rest := PlainContinuation(idx, blockIndent, rest);
+            child.Scalar := Unquote(rest);
+            child.Raw := rest;
+            Dec(idx);
+          end;
+          Result.SetPair(key, child, keyRaw);
           Inc(idx);
         end;
       end;
@@ -491,8 +599,17 @@ begin
   end;
 
   Result := TYamlNode.Create(ykScalar);
-  Result.Scalar := Unquote(c);
+  kindCh := BlockScalarChar(c, chomp);
+  if kindCh <> #0 then
+  begin
+    Inc(idx);
+    Result.Scalar := ParseBlockScalar(idx, blockIndent - 1, kindCh, chomp);
+    Exit;
+  end;
   Inc(idx);
+  c := PlainContinuation(idx, blockIndent, c);
+  Result.Scalar := Unquote(c);
+  Result.Raw := c;
 end;
 
 function YamlParse(const AText: string; out AErr: string): TYamlNode;
@@ -652,11 +769,15 @@ begin
   if (S[1] = ' ') or (S[Length(S)] = ' ') then Exit(True);
   if S[1] in ['!', '&', '*', '?', ':', ',', '[', ']', '{', '}', '#', '|',
               '>', '@', '%', '"', '''', '`', '-'] then Exit(True);
+  // chiffre/./+ en tete : 1e3, 0755 (octal yaml 1.1), 0x1F, 1_000, .inf,
+  // dates -> quote systematique, un go-yaml les typerait
+  if S[1] in ['0'..'9', '.', '+'] then Exit(True);
   if (Pos(': ', S) > 0) or (Pos(' #', S) > 0) then Exit(True);
   if (Pos(#10, S) > 0) or (Pos(#13, S) > 0) or (Pos(#9, S) > 0) then Exit(True);
   low := LowerCase(S);
   if (low = 'true') or (low = 'false') or (low = 'null') or (low = '~') or
-     (low = 'yes') or (low = 'no') or (low = 'on') or (low = 'off') then Exit(True);
+     (low = 'yes') or (low = 'no') or (low = 'on') or (low = 'off') or
+     (low = 'y') or (low = 'n') then Exit(True);
   if LooksNumeric(S) then Exit(True);
   Result := False;
 end;
@@ -680,6 +801,60 @@ begin
   Result := QuoteScalar(S);
 end;
 
+procedure YamlEmitScalar(ASL: TStrings; const APrefix, S: string; AIndent: Integer);
+var
+  i, n, k: Integer;
+  body, pad, hdr: string;
+  lines: TStringList;
+begin
+  // bloc litteral seulement si le texte s'y prete : \n present, pas de \r,
+  // premiere ligne non vide sans espace de tete (l'indentation est deduite
+  // de cette ligne). Sinon double-quote sur une ligne
+  n := 0;
+  i := Length(S);
+  while (i >= 1) and (S[i] = #10) do begin Inc(n); Dec(i); end;
+  body := Copy(S, 1, i);
+  k := 1;
+  while (k <= Length(body)) and (body[k] = #10) do Inc(k);
+  if (Pos(#10, S) = 0) or (Pos(#13, S) > 0) or (body = '') or (body[k] = ' ') then
+  begin
+    ASL.Add(APrefix + QuoteScalar(S));
+    Exit;
+  end;
+  case n of
+    0: hdr := '|-';
+    1: hdr := '|';
+    else hdr := '|+';
+  end;
+  ASL.Add(TrimRight(APrefix) + ' ' + hdr);
+  pad := StringOfChar(' ', AIndent + 2);
+  lines := TStringList.Create;
+  try
+    lines.TextLineBreakStyle := tlbsLF;
+    lines.Text := body;
+    for i := 0 to lines.Count - 1 do
+      if lines[i] = '' then ASL.Add('') else ASL.Add(pad + lines[i]);
+  finally
+    lines.Free;
+  end;
+  for i := 2 to n do ASL.Add('');
+end;
+
+procedure EmitScalarNode(ASL: TStrings; const APrefix: string; ANode: TYamlNode;
+  AIndent: Integer);
+begin
+  if ANode.Raw <> '' then ASL.Add(APrefix + ANode.Raw)
+  else YamlEmitScalar(ASL, APrefix, ANode.Scalar, AIndent);
+end;
+
+function EmitKey(ANode: TYamlNode; AIdx: Integer): string;
+begin
+  if (AIdx <= High(ANode.KeyRaws)) and (ANode.KeyRaws[AIdx] <> '') then
+    Result := ANode.KeyRaws[AIdx]
+  else
+    Result := QuoteScalar(ANode.Keys[AIdx]);
+end;
+
 procedure EmitInto(ANode: TYamlNode; AIndent: Integer; ASL: TStrings); forward;
 
 procedure EmitPair(const AKey: string; AVal: TYamlNode; AIndent: Integer; ASL: TStrings);
@@ -687,10 +862,10 @@ var
   pad, k: string;
 begin
   pad := StringOfChar(' ', AIndent);
-  if NeedsQuote(AKey) then k := QuoteScalar(AKey) else k := AKey;
+  k := AKey;
   case AVal.Kind of
     ykScalar:
-      ASL.Add(pad + k + ': ' + QuoteScalar(AVal.Scalar));
+      EmitScalarNode(ASL, pad + k + ': ', AVal, AIndent);
     ykMap:
       if AVal.Count = 0 then ASL.Add(pad + k + ': {}')
       else begin ASL.Add(pad + k + ':'); EmitInto(AVal, AIndent + 2, ASL); end;
@@ -706,7 +881,7 @@ var
 begin
   pad := StringOfChar(' ', AIndent);
   case AItem.Kind of
-    ykScalar: ASL.Add(pad + '- ' + QuoteScalar(AItem.Scalar));
+    ykScalar: EmitScalarNode(ASL, pad + '- ', AItem, AIndent);
     ykMap:
       if AItem.Count = 0 then ASL.Add(pad + '- {}')
       else begin ASL.Add(pad + '-'); EmitInto(AItem, AIndent + 2, ASL); end;
@@ -723,10 +898,10 @@ begin
   // 1 frame de pile par niveau : un arbre bati a la main deborderait
   if AIndent > 2 * YAML_MAX_DEPTH then Exit;
   case ANode.Kind of
-    ykScalar: ASL.Add(StringOfChar(' ', AIndent) + QuoteScalar(ANode.Scalar));
+    ykScalar: EmitScalarNode(ASL, StringOfChar(' ', AIndent), ANode, AIndent);
     ykMap:
       for i := 0 to High(ANode.Keys) do
-        EmitPair(ANode.Keys[i], ANode.Vals[i], AIndent, ASL);
+        EmitPair(EmitKey(ANode, i), ANode.Vals[i], AIndent, ASL);
     ykList:
       for i := 0 to High(ANode.Items) do
         EmitItem(ANode.Items[i], AIndent, ASL);
@@ -767,6 +942,7 @@ begin
   onlyA := TStringList.Create; onlyB := TStringList.Create;
   changed := TStringList.Create; res := TStringList.Create;
   try
+    ka.CaseSensitive := True; kb.CaseSensitive := True;
     YamlFlattenKV(A, ka, va);
     YamlFlattenKV(B, kb, vb);
     for i := 0 to ka.Count - 1 do
@@ -841,7 +1017,7 @@ var
 
 var
   i: Integer;
-  nk: array of string;
+  nk, nr: array of string;
   nv: array of TYamlNode;
 begin
   if ANode = nil then Exit;
@@ -854,13 +1030,16 @@ begin
         for i := 0 to High(idx) do idx[i] := i;
         QSort(0, High(idx));
         SetLength(nk, Length(ANode.Keys));
+        SetLength(nr, Length(ANode.Keys));
         SetLength(nv, Length(ANode.Vals));
         for i := 0 to High(idx) do
         begin
           nk[i] := ANode.Keys[idx[i]];
+          if idx[i] <= High(ANode.KeyRaws) then nr[i] := ANode.KeyRaws[idx[i]];
           nv[i] := ANode.Vals[idx[i]];
         end;
         ANode.Keys := nk;
+        ANode.KeyRaws := nr;
         ANode.Vals := nv;
       end;
     ykList:

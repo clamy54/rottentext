@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Menus, Clipbrd, LCLType, LCLIntf,
-  ExtCtrls, uDocumentManager, uDocument, uTheme;
+  ExtCtrls, LazUTF8, uDocumentManager, uDocument, uTheme;
 
 type
   TTabSlot = record
@@ -446,10 +446,10 @@ begin
   Canvas.Brush.Style := bsClear;
   cap := doc.DisplayName;
   availW := (r.Right - PADX - CLOSE_SZ - 6) - (r.Left + PADX);
-  while (Canvas.TextWidth(cap) > availW) and (Length(cap) > 1) do
-    cap := Copy(cap, 1, Length(cap) - 1);
+  while (Canvas.TextWidth(cap) > availW) and (UTF8Length(cap) > 1) do
+    cap := UTF8Copy(cap, 1, UTF8Length(cap) - 1);
   if cap <> doc.DisplayName then
-    cap := Copy(cap, 1, Length(cap) - 1) + '…';
+    cap := UTF8Copy(cap, 1, UTF8Length(cap) - 1) + '…';
   ty := (ClientHeight - Canvas.TextHeight('Ag')) div 2;
   Canvas.TextOut(r.Left + PADX, ty, cap);
   Canvas.Brush.Style := bsSolid;

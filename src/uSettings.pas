@@ -87,6 +87,7 @@ var
   root: TJSONData;
   obj: TJSONObject;
   themed: Boolean;
+  n: Integer;
 begin
   // rattrapage des configs nees avant le durcissement (0644/0755); tourne a
   // chaque lancement, couvre aussi les fenetres hors session
@@ -113,6 +114,11 @@ begin
         if (root <> nil) and (root.JSONType = jtObject) then
         begin
           obj := TJSONObject(root);
+          // avant le theme: ApplyTheme pose la pref
+          PrefEditorFontKey := JStr(obj, 'editorFont');
+          n := JInt(obj, 'editorFontSize', 0);
+          if (n < PREF_FONT_SIZE_MIN) or (n > PREF_FONT_SIZE_MAX) then n := 0;
+          PrefEditorFontSize := n;
           themed := ApplyThemeFile(ExtractFileName(JStr(obj, 'theme')));
           RTTabWidth := ClampI(JInt(obj, 'tabWidth', RTTabWidth), 1, 16);
           RTWordWrap := JBool(obj, 'wordWrap', RTWordWrap);
@@ -151,6 +157,10 @@ begin
       tf := CurrentThemeFile;
       if tf <> '' then
         obj.Add('theme', tf);
+      if PrefEditorFontKey <> '' then
+        obj.Add('editorFont', PrefEditorFontKey);
+      if PrefEditorFontSize <> 0 then
+        obj.Add('editorFontSize', PrefEditorFontSize);
       obj.Add('tabWidth', RTTabWidth);
       obj.Add('wordWrap', RTWordWrap);
       obj.Add('wrapColumn', RTWrapColumn);

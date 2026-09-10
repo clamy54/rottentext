@@ -94,6 +94,18 @@ begin
   end;
 end;
 
+// entier decimal strict : Val accepte $1f / &17 / %101, pas cron
+procedure DecVal(const S: string; out V: Integer; out ACode: Integer);
+var
+  i: Integer;
+begin
+  V := 0; ACode := 1;
+  if (S = '') or (Length(S) > 9) then Exit;
+  for i := 1 to Length(S) do
+    if not (S[i] in ['0'..'9']) then Exit;
+  Val(S, V, ACode);
+end;
+
 // prefixe 3 lettres insensible a la casse: 'monday' matche 'mon'
 function NameVal(const S: string; const ANames: array of string;
   ABase: Integer): Integer;
@@ -113,7 +125,7 @@ function FieldVal(const S: string; ALo, AHi: Integer;
 var
   v, code: Integer;
 begin
-  Val(S, v, code);
+  DecVal(S, v, code);
   if code = 0 then
   begin
     if (v < ALo) or (v > AHi) then Exit(-1);
@@ -145,7 +157,7 @@ begin
     p := Pos('/', it);
     if p > 0 then
     begin
-      Val(Copy(it, p + 1, MaxInt), step, v);
+      DecVal(Copy(it, p + 1, MaxInt), step, v);
       if (v <> 0) or (step < 1) then
         begin AErr := 'bad step in "' + it + '"'; Exit; end;
       it := Copy(it, 1, p - 1);
@@ -163,6 +175,7 @@ begin
       begin
         rng := Copy(it, p + 1, MaxInt);
         it := Copy(it, 1, p - 1);
+        if rng = '' then begin AErr := 'bad range "' + it + '-"'; Exit; end;
       end;
       a := FieldVal(it, ALo, AHi, ANames, ABase);
       if a < 0 then begin AErr := 'bad value "' + it + '"'; Exit; end;
@@ -177,6 +190,8 @@ begin
       else
         b := a;
     end;
+    // step > plage : Inc(v) deborderait ({$Q-}) et shl masque mod 64
+    if step > AHi - ALo then step := AHi - ALo + 1;
     v := a;
     while v <= b do
     begin
@@ -290,7 +305,7 @@ begin
     pp := Pos('/', it);
     if pp > 0 then
     begin
-      Val(Copy(it, pp + 1, MaxInt), prt.Step, code);
+      DecVal(Copy(it, pp + 1, MaxInt), prt.Step, code);
       if (code <> 0) or (prt.Step < 1) then
         begin AErr := 'bad step in "' + it + '"'; Exit; end;
       it := Copy(it, 1, pp - 1);
@@ -309,12 +324,12 @@ begin
       end
       else
         rng := '';
-      Val(it, prt.Lo, code);
+      DecVal(it, prt.Lo, code);
       if (code <> 0) or (prt.Lo < ALo) or (prt.Lo > AHi) then
         begin AErr := 'bad value "' + it + '"'; Exit; end;
       if rng <> '' then
       begin
-        Val(rng, prt.Hi, code);
+        DecVal(rng, prt.Hi, code);
         if (code <> 0) or (prt.Hi < prt.Lo) or (prt.Hi > AHi) then
           begin AErr := 'bad range end "' + rng + '"'; Exit; end;
       end
@@ -413,13 +428,16 @@ begin
       if timePart <> '' then begin AErr := 'two time parts'; Exit; end;
       timePart := t;
     end
-    else if (Pos('-', t) > 0) or (t = '*') then
+    else if ((Pos('-', t) > 0) or (t = '*')) and
+            not ((t <> '') and (t[1] in ['A'..'Z', 'a'..'z'])) then
     begin
       if datePart <> '' then begin AErr := 'two date parts'; Exit; end;
       datePart := t;
     end
     else if (t <> '') and (t[1] in ['A'..'Z', 'a'..'z']) then
     begin
+      // Mon-Fri : forme ancienne encore acceptee par systemd, = Mon..Fri
+      t := StringReplace(t, '-', '..', [rfReplaceAll]);
       // dow avant la date, sinon timezone finale (ignoree)
       if (dowPart = '') and (datePart = '') and (timePart = '') then
         dowPart := t

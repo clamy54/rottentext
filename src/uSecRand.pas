@@ -32,7 +32,7 @@ var
 begin
   Result := False;
   if ACount <= 0 then Exit(True);
-  fd := FpOpen('/dev/urandom', O_RDONLY);
+  fd := FpOpen('/dev/urandom', O_RDONLY or O_CLOEXEC);
   if fd < 0 then Exit;
   try
     p := @ABuf;
@@ -40,6 +40,7 @@ begin
     while got < ACount do
     begin
       n := FpRead(fd, p[got], ACount - got);
+      if (n < 0) and (fpgeterrno = ESysEINTR) then Continue; // signal : on relit
       if n <= 0 then Exit;
       Inc(got, n);
     end;

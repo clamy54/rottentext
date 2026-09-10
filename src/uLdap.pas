@@ -88,7 +88,17 @@ function LdapUserPassword(AScheme: TLdapPwScheme; const APassword: RawByteString
 var
   salt: RawByteString;
   bsalt: array[0..15] of Byte;
+  salted: string;
+
+  // clair + sel dans UN tampon local, zeroise apres hachage
+  function PwSalt: string;
+  begin
+    salted := APassword + salt;
+    Result := salted;
+  end;
+
 begin
+  salted := '';
   case AScheme of
     lpsSHA:
       Result := '{SHA}' + EncodeStringBase64(Sha1Raw(APassword));
@@ -97,22 +107,22 @@ begin
     lpsSSHA:
       begin
         salt := RandBytes(SALT_LEN);
-        Result := '{SSHA}' + EncodeStringBase64(Sha1Raw(APassword + salt) + salt);
+        Result := '{SSHA}' + EncodeStringBase64(Sha1Raw(PwSalt) + salt);
       end;
     lpsSMD5:
       begin
         salt := RandBytes(SALT_LEN);
-        Result := '{SMD5}' + EncodeStringBase64(Md5Raw(APassword + salt) + salt);
+        Result := '{SMD5}' + EncodeStringBase64(Md5Raw(PwSalt) + salt);
       end;
     lpsSSHA256:
       begin
         salt := RandBytes(SALT_LEN);
-        Result := '{SSHA256}' + EncodeStringBase64(Sha256Raw(APassword + salt) + salt);
+        Result := '{SSHA256}' + EncodeStringBase64(Sha256Raw(PwSalt) + salt);
       end;
     lpsSSHA512:
       begin
         salt := RandBytes(SALT_LEN);
-        Result := '{SSHA512}' + EncodeStringBase64(Sha512Raw(APassword + salt) + salt);
+        Result := '{SSHA512}' + EncodeStringBase64(Sha512Raw(PwSalt) + salt);
       end;
     lpsCrypt:
       begin
@@ -123,6 +133,7 @@ begin
     lpsSASL:
       Result := '{SASL}' + APassword;
   end;
+  if salted <> '' then FillChar(salted[1], Length(salted), 0);
 end;
 
 end.

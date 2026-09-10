@@ -9,12 +9,13 @@ Two things every package must carry, whatever the platform:
   resolve them as `ExtractFilePath(ParamStr(0)) + 'syntax'` (resp. `themes`) —
   nowhere else. A missing `themes/` is survivable (default colours, no
   `View > Theme` menu); a missing `syntax/` means no syntax highlighting.
-  `fonts/` is *not* needed at runtime: the 20 Monaspace TTFs are compiled into
-  the binary as resources.
+  `fonts/` is *not* needed at runtime: the 20 Monaspace TTFs and the 4
+  JetBrains Mono Nerd Font TTFs are compiled into the binary as resources.
 - **The licenses.** Because those fonts live *inside* the executable, the SIL
   OFL requires its text to travel with any distribution, including binary-only
   ones. Every packaging below ships `licenses/OFL-1.1-Monaspace.txt`,
-  `LICENSE` and `LICENSE_THIRD_PARTIES.md`. Do not drop them.
+  `licenses/OFL-1.1-JetBrainsMono.txt`, `LICENSE` and
+  `LICENSE_THIRD_PARTIES.md`. Do not drop them.
 
 The version comes from `RT_VERSION` in `src/uMain.pas` — the single source of
 truth, also shown in `Help > About`. All three packagings extract it themselves;
@@ -36,7 +37,8 @@ directory, plus Start Menu (and optional desktop) shortcuts.
 
 The wizard's **License Agreement** page shows `LICENSE` (GPL-2) — the license of
 RottenText itself, the one the user accepts. The **Information** page right after
-shows the third-party inventory: embedded Monaspace fonts, LCL, FPC, SynEdit.
+shows the third-party inventory: embedded Monaspace and JetBrains Mono fonts,
+LCL, FPC, SynEdit.
 
 Showing it is a courtesy, not an obligation — what the licenses require is that
 their text *accompanies* the distribution, which `[Files]` does. But Inno renders
@@ -95,7 +97,7 @@ makepkg -si
 Neither GTK+2 nor its LCL variant is in the official repositories any more —
 Arch ships `lazarus-qt5` and `lazarus-qt6` only. The `PKGBUILD` also declares
 `pango` and `fontconfig`, which `uFontEmbed` opens with `dlopen` to register
-the embedded Monaspace fonts: nothing links against them, so no packaging tool
+the embedded fonts: nothing links against them, so no packaging tool
 can infer them.
 
 **Layout note.** The binary is *not* installed as `/usr/bin/rottentext`. Since

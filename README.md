@@ -74,9 +74,10 @@ security", we both know you haven't read the source, so just grab the package.
 ### Building from source
 
 For the three people who insist. You need **Lazarus** (tested with 4.8) and
-**FPC 3.2.2**, the `SynEdit`, `LCL` and `Printer4Lazarus` packages, and the 20
-**Monaspace Frozen** TTF files in `fonts/` (they are in this repository; the
-build compiles them into the binary as resources).
+**FPC 3.2.2**, the `SynEdit`, `LCL` and `Printer4Lazarus` packages, and the 24
+TTF files in `fonts/` (20 **Monaspace Frozen**, 4 **JetBrains Mono NL Nerd
+Font**; they are in this repository; the build compiles them into the binary as
+resources).
 
 ```sh
 scripts/build.ps1          # Windows   (-Release for the small binary)
@@ -100,8 +101,9 @@ than most manuals do.
 
 GPL-2. See [`LICENSE`](LICENSE).
 
-The binary embeds the **Monaspace** font family (SIL Open Font License 1.1) and
-statically links the LCL, the Free Pascal RTL and SynEdit. Every third-party work
+The binary embeds the **Monaspace** font family and **JetBrains Mono NL Nerd
+Font** (both SIL Open Font License 1.1) and statically links the LCL, the Free
+Pascal RTL and SynEdit. Every third-party work
 that ends up in a build is inventoried in
 [`LICENSE_THIRD_PARTIES.md`](LICENSE_THIRD_PARTIES.md), with what a redistributor
 has to do about it. If you repackage RottenText, read that file. It is short.

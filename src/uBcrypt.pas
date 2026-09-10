@@ -480,11 +480,15 @@ var
   i, k, j: Integer;
   saltStr, hashStr: string;
 begin
+  // cost hors 4..31 : shl masque (99 -> 2^35 tours) ou negatif (0 tour)
+  if (ACost < 4) or (ACost > 31) then
+    raise Exception.Create('bcrypt cost must be 4..31');
   // cle = mot de passe + NUL, tronquee a 72 octets (crypt_blowfish)
   keyBuf := APassword + #0;
   if Length(keyBuf) > 72 then SetLength(keyBuf, 72);
 
   EksBlowfishSetup(ACost, PByte(@ASalt), 16, PByte(@keyBuf[1]), Length(keyBuf), St);
+  FillChar(keyBuf[1], Length(keyBuf), 0); // copie du clair
 
   magic := 'OrpheanBeholderScryDoubt';
   j := 0;
@@ -521,7 +525,9 @@ begin
   ACost := 0;
   if Length(ACrypt) < 29 then Exit;
   if (ACrypt[1] <> '$') or (ACrypt[2] <> '2') or (ACrypt[4] <> '$') then Exit;
+  if not (ACrypt[3] in ['a', 'b', 'y']) then Exit;
   if not TryStrToInt(Copy(ACrypt, 5, 2), ACost) then Exit;
+  if (ACost < 4) or (ACost > 31) then Exit;
   if ACrypt[7] <> '$' then Exit;
   saltPart := Copy(ACrypt, 8, 22);
   if Length(saltPart) <> 22 then Exit;

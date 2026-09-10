@@ -111,7 +111,7 @@ EOF
     chmod 0644 "$pkgdir/usr/share/icons/hicolor/${_s}x${_s}/apps/$pkgname.png"
   done
 
-  # Les Monaspace sont COMPILEES DANS le binaire (ressources RCDATA): l'OFL
+  # Monaspace et JetBrains Mono sont COMPILEES DANS le binaire (RCDATA): l'OFL
   # impose que son texte accompagne meme une distribution binaire seule, d'ou
   # la licence tierce ici et pas seulement le copyright du projet.
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
@@ -119,4 +119,6 @@ EOF
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE_THIRD_PARTIES.md"
   install -Dm644 licenses/OFL-1.1-Monaspace.txt \
     "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-Monaspace.txt"
+  install -Dm644 licenses/OFL-1.1-JetBrainsMono.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-JetBrainsMono.txt"
 }

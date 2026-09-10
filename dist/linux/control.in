@@ -15,5 +15,6 @@ Description: RottenText - a text editor with a sysadmin toolbox
  CIDR, cron, logs, YAML/JSON/TOML/INI, Kubernetes, Helm, Docker/Compose,
  Podman Quadlet, Terraform - all in-process, no external dependency.
  .
- Free software under GPL v2. Embeds the Monaspace fonts (SIL OFL 1.1); see
+ Free software under GPL v2. Embeds the Monaspace and JetBrains Mono Nerd
+ Font fonts (SIL OFL 1.1); see
  /usr/share/doc/rottentext/LICENSE_THIRD_PARTIES.md

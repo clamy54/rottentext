@@ -12,7 +12,7 @@ uses
   uHexView, uTextOps, uRecent, uThemeLoad, uSettings, uOps, uSecretPrompt, uLdap,
   uLdif, uLdifDlg, uNet, uJwt, uExtract, uTimeConv, uProto, uNmap, uHttp,
   uDiffView, uYaml, uKube, uHelm, uEnv, uX509, uCompose, uQuadlet, uTf, uIni,
-  uToml, uEol, uCron, uLogTools, uMailTrace, DateUtils;
+  uToml, uEol, uCron, uLogTools, uMailTrace, uFontDlg, DateUtils;
 
 type
   TAppActions = class
@@ -104,6 +104,7 @@ type
     procedure SetSplitItem(AItem: TMenuItem);
     procedure SetSplitChecked(AOn: Boolean);
     procedure ViewTheme(Sender: TObject); // Tag = index dans uThemeLoad
+    procedure ViewFont(Sender: TObject);
     procedure SetSyntax(Sender: TObject); // Tag: 0 = Plain Text, N = syntaxe N-1
     procedure ViewTabWidth(Sender: TObject);   // Tag = 1..8
     procedure ViewWordWrap(Sender: TObject);
@@ -1011,6 +1012,14 @@ begin
     Exit;
   end;
   TMenuItem(Sender).Checked := True;
+  if Assigned(FOnThemeChanged) then
+    FOnThemeChanged(Self);
+  SettingsSave;
+end;
+
+procedure TAppActions.ViewFont(Sender: TObject);
+begin
+  if not ShowEditorFontDialog then Exit;
   if Assigned(FOnThemeChanged) then
     FOnThemeChanged(Self);
   SettingsSave;

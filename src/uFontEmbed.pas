@@ -4,13 +4,16 @@ unit uFontEmbed;
 
 interface
 
-// Polices Monaspace enregistrees pour ce seul process: ressources RCDATA du
-// binaire (bloc Resources du .lpi), repli sur fonts/ a cote de l'exe.
+// Polices embarquees (Monaspace Frozen, JetBrainsMono NL Nerd Font Mono)
+// enregistrees pour ce seul process: ressources RCDATA du binaire (bloc
+// Resources du .lpi), repli sur fonts/ a cote de l'exe. Les fonctions gardent
+// leur prefixe Monaspace: la JetBrains est une famille de plus dans la table.
 procedure LoadEmbeddedFonts;
 
 function MonaspaceAvailable: Boolean;
 function MonaspaceFamilyCount: Integer;
-function MonaspaceFamilyKey(AIndex: Integer): string;   // 'Neon', 'Argon'...
+function MonaspaceFamilyKey(AIndex: Integer): string;   // 'Neon', 'JetBrainsMono'...
+function MonaspaceFamilyLabel(AIndex: Integer): string; // libelle utilisateur
 // '' si hors whitelist ou famille non chargee: le theme retombe sur le defaut
 function ResolveMonaspace(const AValue: string): string;
 
@@ -26,25 +29,37 @@ uses
 
 const
   // noms = ResourceName du .lpi, et nom de fichier d'extraction sous POSIX
-  FontRes: array[0..19] of string = (
+  FontRes: array[0..23] of string = (
     'NEON_REGULAR', 'NEON_BOLD', 'NEON_ITALIC', 'NEON_BOLDITALIC',
     'ARGON_REGULAR', 'ARGON_BOLD', 'ARGON_ITALIC', 'ARGON_BOLDITALIC',
     'XENON_REGULAR', 'XENON_BOLD', 'XENON_ITALIC', 'XENON_BOLDITALIC',
     'RADON_REGULAR', 'RADON_BOLD', 'RADON_ITALIC', 'RADON_BOLDITALIC',
-    'KRYPTON_REGULAR', 'KRYPTON_BOLD', 'KRYPTON_ITALIC', 'KRYPTON_BOLDITALIC');
+    'KRYPTON_REGULAR', 'KRYPTON_BOLD', 'KRYPTON_ITALIC', 'KRYPTON_BOLDITALIC',
+    'JETBRAINSMONO_REGULAR', 'JETBRAINSMONO_BOLD', 'JETBRAINSMONO_ITALIC',
+    'JETBRAINSMONO_BOLDITALIC');
   FontFamily = 'Monaspace Neon Frozen';
 
-  // whitelist: seules ces familles sont acceptees d'un fichier theme
-  FamKeys: array[0..4] of string =
-    ('Neon', 'Argon', 'Xenon', 'Radon', 'Krypton');
-  FamFull: array[0..4] of string = (
+  // whitelist: seules ces familles sont acceptees d'un theme ou des prefs
+  FamKeys: array[0..5] of string =
+    ('Neon', 'Argon', 'Xenon', 'Radon', 'Krypton', 'JetBrainsMono');
+  // nom de famille declare par la table name du TTF (CreateFont)
+  FamFull: array[0..5] of string = (
     'Monaspace Neon Frozen', 'Monaspace Argon Frozen', 'Monaspace Xenon Frozen',
-    'Monaspace Radon Frozen', 'Monaspace Krypton Frozen');
+    'Monaspace Radon Frozen', 'Monaspace Krypton Frozen', 'JetBrainsMonoNL NFM');
+  FamLabel: array[0..5] of string = (
+    'Monaspace Neon Frozen', 'Monaspace Argon Frozen', 'Monaspace Xenon Frozen',
+    'Monaspace Radon Frozen', 'Monaspace Krypton Frozen',
+    'JetBrains Mono NL Nerd Font');
+  // prefixe des fichiers du repli fonts/
+  FamFile: array[0..5] of string = (
+    'MonaspaceNeonFrozen-', 'MonaspaceArgonFrozen-', 'MonaspaceXenonFrozen-',
+    'MonaspaceRadonFrozen-', 'MonaspaceKryptonFrozen-',
+    'JetBrainsMonoNLNerdFontMono-');
   StyleSuffix: array[0..3] of string = ('Regular', 'Bold', 'Italic', 'BoldItalic');
 
 var
   // [famille, style] reellement chargee; FontRes[i] = fam (i div 4), style (i mod 4)
-  FamStyleLoaded: array[0..4, 0..3] of Boolean;
+  FamStyleLoaded: array[0..5, 0..3] of Boolean;
 
 // famille incomplete: CreateFont par nom fallbackerait en silence sur une autre police
 function FamComplete(AFam: Integer): Boolean;
@@ -64,7 +79,7 @@ begin
     FamStyleLoaded[AResIdx div 4, AResIdx mod 4] := True;
 end;
 
-// -1 si le fichier n'est pas une des 20 polices connues
+// -1 si le fichier n'est pas une des 24 polices connues
 function ResIndexOfFile(const AName: string): Integer;
 var
   f, s: Integer;
@@ -72,7 +87,7 @@ begin
   Result := -1;
   for f := 0 to High(FamKeys) do
     for s := 0 to 3 do
-      if SameText(AName, 'Monaspace' + FamKeys[f] + 'Frozen-' + StyleSuffix[s] + '.ttf') then
+      if SameText(AName, FamFile[f] + StyleSuffix[s] + '.ttf') then
         Exit(f * 4 + s);
 end;
 
@@ -90,6 +105,14 @@ function MonaspaceFamilyKey(AIndex: Integer): string;
 begin
   if (AIndex >= 0) and (AIndex <= High(FamKeys)) then
     Result := FamKeys[AIndex]
+  else
+    Result := '';
+end;
+
+function MonaspaceFamilyLabel(AIndex: Integer): string;
+begin
+  if (AIndex >= 0) and (AIndex <= High(FamLabel)) then
+    Result := FamLabel[AIndex]
   else
     Result := '';
 end;

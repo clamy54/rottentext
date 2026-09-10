@@ -23,6 +23,18 @@ implementation
 uses
   Classes;
 
+// -1 si autre chose que des chiffres
+function DecOnly(const S: string): Integer;
+var
+  i: Integer;
+begin
+  Result := -1;
+  if (S = '') or (Length(S) > 3) then Exit;
+  for i := 1 to Length(S) do
+    if not (S[i] in ['0'..'9']) then Exit;
+  Result := StrToIntDef(S, -1);
+end;
+
 function ParseIPv4(const S: string; out V: LongWord): Boolean;
 var
   i, val, dig, cnt: Integer;
@@ -82,7 +94,8 @@ begin
   begin
     ipPart := Trim(Copy(s, 1, slash - 1));
     pfxPart := Trim(Copy(s, slash + 1, MaxInt));
-    prefix := StrToIntDef(pfxPart, -1);
+    // StrToIntDef accepte $18 / 0x18 / &30 : chiffres seulement
+    prefix := DecOnly(pfxPart);
     if (pfxPart = '') or (prefix < 0) or (prefix > 32) then
       raise ENetError.Create('Prefix must be 0..32');
   end
@@ -323,7 +336,7 @@ begin
   begin
     ipPart := Trim(Copy(s, 1, slash - 1));
     pfxPart := Trim(Copy(s, slash + 1, MaxInt));
-    prefix := StrToIntDef(pfxPart, -1);
+    prefix := DecOnly(pfxPart);
     if (pfxPart = '') or (prefix < 0) or (prefix > 128) then
       raise ENetError.Create('Prefix must be 0..128');
   end

@@ -68,7 +68,7 @@ Source: "..\..\RottenText.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\syntax\*"; DestDir: "{app}\syntax"; Flags: recursesubdirs createallsubdirs
 Source: "..\..\themes\*"; DestDir: "{app}\themes"; Flags: recursesubdirs createallsubdirs
 Source: "..\..\RottenText.ico"; DestDir: "{app}"
-; licences : les polices Monaspace sont COMPILEES DANS l'exe (ressources RCDATA),
+; licences : les polices Monaspace et JetBrains Mono sont COMPILEES DANS l'exe (RCDATA),
 ; donc l'OFL impose que son texte accompagne la distribution, binaire compris.
 Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\..\LICENSE_THIRD_PARTIES.md"; DestDir: "{app}"

@@ -375,7 +375,9 @@ end;
 function NeedsEnvQuote(const S: string): Boolean;
 begin
   Result := (Pos(#10, S) > 0) or (Pos(#13, S) > 0) or (Pos(' ', S) > 0) or
-    (Pos(#9, S) > 0) or (Pos('#', S) > 0) or (Pos('=', S) > 0) or (S <> Trim(S));
+    (Pos(#9, S) > 0) or (Pos('#', S) > 0) or (Pos('=', S) > 0) or (S <> Trim(S)) or
+    // "x" nu serait relu comme x : les quotes de la valeur passent en echappes
+    ((S <> '') and (S[1] in ['"', '''']));
 end;
 
 function EnvQuote(const S: string): string;
@@ -564,7 +566,7 @@ begin
   try
     for i := 0 to lines.Count - 1 do
       case ClassifyEnv(lines[i], key, val, exp) of
-        ekEntry: outp.Add(key + ': ' + YamlQuoteScalar(EnvDecodeValue(Trim(val))));
+        ekEntry: YamlEmitScalar(outp, key + ': ', EnvDecodeValue(Trim(val)), 0);
         ekBlank: outp.Add('');
         ekComment: outp.Add(lines[i]);
       else

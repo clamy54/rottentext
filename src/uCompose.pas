@@ -163,6 +163,7 @@ begin
     end;
     sl := TStringList.Create;
     tags := TStringList.Create;
+    tags.CaseSensitive := True;
     tags.Sorted := True;
     tags.Duplicates := dupIgnore;
     try
