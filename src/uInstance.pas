@@ -19,6 +19,10 @@ function InstanceServerPoll(out APath: string): Boolean;
 // serait ouvert deux fois (le client expire et ouvre sa propre fenetre)
 procedure InstanceServerDrain;
 
+// True = cette instance possede la session (restore, autosave, purge).
+// Tenu jusqu'a la fin du process, jamais rendu.
+function ClaimSessionSlot: Boolean;
+
 implementation
 
 uses
@@ -45,9 +49,11 @@ const
 var
   FSrv: TSimpleIPCServer = nil;
   {$IFDEF WINDOWS}
-  FSlot: THandle = 0;   // mutex nomme: notre droit a servir le canal
+  FSlot: THandle = 0;       // mutex nomme: notre droit a servir le canal
+  FSessSlot: THandle = 0;   // idem pour la session (tenu tout le process)
   {$ELSE}
-  FSlot: cint = -1;     // fd du verrou de fichier, idem
+  FSlot: cint = -1;         // fd du verrou de fichier, idem
+  FSessSlot: cint = -1;
   {$ENDIF}
 
 function ConfigDir: string;
@@ -57,6 +63,33 @@ end;
 
 // primitive d'exclusion de l'OS, pas un simple "un serveur tourne-t-il ?": N
 // process lances d'un coup verraient tous le canal libre et le serviraient tous
+// une seule instance possede la session: deux lancements sans argument
+// restaureraient les memes onglets et se purgeraient mutuellement les tampons
+function ClaimSessionSlot: Boolean;
+begin
+  {$IFDEF WINDOWS}
+  if FSessSlot <> 0 then Exit(True);
+  FSessSlot := CreateMutexW(nil, False, 'Local\RottenText.session');
+  if FSessSlot = 0 then Exit(False);
+  Result := GetLastOSError <> ERR_ALREADY_EXISTS;
+  if not Result then
+  begin
+    CloseHandle(FSessSlot);
+    FSessSlot := 0;
+  end;
+  {$ELSE}
+  if FSessSlot >= 0 then Exit(True);
+  FSessSlot := FpOpen(ConfigDir + 'session.lock', O_CREAT or O_RDWR, &600);
+  if FSessSlot < 0 then Exit(False);
+  Result := fpFlock(FSessSlot, LOCK_EX or LOCK_NB) = 0;
+  if not Result then
+  begin
+    FpClose(FSessSlot);
+    FSessSlot := -1;
+  end;
+  {$ENDIF}
+end;
+
 function ClaimServerSlot: Boolean;
 begin
   {$IFDEF WINDOWS}

@@ -467,10 +467,24 @@ begin
         '%s changed size on disk (%d -> %d bytes) since it was opened.' +
         LineEnding + 'Use Save As to write your edits to a new file.',
         [FFileName, FSize, ws.Size]);
-    for i := 0 to High(FEdits) do
-    begin
-      ws.Position := FEdits[i].Ofs;
-      ws.WriteBuffer(FEdits[i].Val, 1);
+    // ecriture sur place: pas de copie de secours possible sur une image de
+    // plusieurs Go. Une coupure laisse un melange ancien/nouveau, on dit lequel.
+    i := 0;
+    try
+      while i <= High(FEdits) do
+      begin
+        ws.Position := FEdits[i].Ofs;
+        ws.WriteBuffer(FEdits[i].Val, 1);
+        Inc(i);
+      end;
+      if not SyncHandle(ws.Handle) then
+        raise EStreamError.Create('flush to disk failed');
+    except
+      on E: Exception do
+        raise EStreamError.CreateFmt(
+          'Writing %s failed after %d of %d byte edits (%s).' + LineEnding +
+          'The file now mixes old and new bytes.',
+          [FFileName, i, Length(FEdits), E.Message]);
     end;
   finally
     ws.Free;
@@ -487,21 +501,24 @@ var
   os: TStream;
   buf: TBytes;
   ofs, c, t: Int64;
-  tmp, origName: string;
+  tmp, origName, dest, partial: string;
   ok, reopened: Boolean;
 begin
   // un save precedent a pu vider l'etat: ne jamais ecrire un fichier vide
   if FStream = nil then
     raise EStreamError.Create(
       'Hex view is not loaded (a previous save failed); cannot save.');
-  if SameFileName(AFileName, FFileName) then
+  // ecrire la CIBLE du lien, pas l'entree du lien: un rename remplacerait le
+  // symlink lui-meme (la vue texte fait deja ca)
+  dest := ResolveLink(AFileName);
+  if SameFileName(dest, FFileName) then
   begin
     SaveInPlace;
     Exit;
   end;
   // toujours temp + rename: une destination qui est un alias de la source
   // (hardlink, chemin 8.3) serait TRONQUEE par un fmCreate avant relecture
-  os := CreateTempIn(AFileName, tmp);
+  os := CreateTempIn(dest, tmp);
   try
     try
       ofs := 0;
@@ -516,6 +533,7 @@ begin
         os.WriteBuffer(buf[0], Length(buf));
         Inc(ofs, Length(buf));
       end;
+      (os as TOwnedHandleStream).SyncOrFail;
     finally
       os.Free;
     end;
@@ -527,24 +545,44 @@ begin
   t := FTopRow;
   // la destination peut etre un alias de la source: lacher notre handle avant
   FreeAndNil(FStream);
-  ok := ReplaceByRename(tmp, AFileName);
+  partial := '';
+  if HasHardLinks(dest) then
+  begin
+    // un rename detacherait la cible de son groupe de liens. Un echec doit
+    // repasser par la recuperation ci-dessous, pas laisser la vue sans flux.
+    try
+      PublishKeepLinks(tmp, dest);
+      ok := True;
+    except
+      on E: Exception do
+      begin
+        ok := False;
+        partial := E.Message; // ecriture sur place ENTAMEE
+      end;
+    end;
+  end
+  else
+    ok := ReplaceByRename(tmp, dest);
   if not ok then
   begin
-    // source et destination intactes, edits toujours en memoire
     origName := FFileName;
     reopened := False;
-    try
-      FStream := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
-      reopened := True;
-    except
-    end;
+    // rename refuse: source et destination intactes, edits toujours en memoire.
+    // Publication sur place entamee: la cible est douteuse, et la source aussi
+    // si elle en est un lien. On ne la rouvre pas, on montre la copie complete.
+    if partial = '' then
+      try
+        FStream := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
+        reopened := True;
+      except
+      end;
     if reopened then
     begin
       DeleteFile(tmp);
       raise EStreamError.CreateFmt('Cannot save as %s', [AFileName]);
     end;
-    // double echec: basculer la vue sur le TEMP (copie complete) plutot que la
-    // vider, sinon un retry Save As ecrirait un fichier vide. tmp CONSERVE.
+    // basculer la vue sur le TEMP (copie complete) plutot que la vider, sinon
+    // un retry Save As ecrirait un fichier vide. tmp CONSERVE.
     try
       LoadFile(tmp);
     except
@@ -553,6 +591,9 @@ begin
       SetLength(FEdits, 0);
       FCacheLen := 0;
     end;
+    if partial <> '' then
+      raise EStreamError.Create(partial + LineEnding +
+        'That copy is now shown: use Save As to write it elsewhere.');
     raise EStreamError.CreateFmt(
       'Cannot save as %s and cannot reopen %s.' + LineEnding +
       'Your full edited copy is preserved (and shown if possible) in:' +

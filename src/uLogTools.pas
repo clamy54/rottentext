@@ -55,11 +55,17 @@ function IsoLocal(UTC: TDateTime): string;
 var
   bias, disp: Integer;
   sign: Char;
+  loc: TDateTime;
+  fmt: string;
 begin
   bias := GetLocalTimeOffset; // minutes : UTC = local + bias
   disp := -bias;
   if disp >= 0 then sign := '+' else sign := '-';
-  Result := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', UniversalTimeToLocal(UTC)) +
+  loc := UniversalTimeToLocal(UTC);
+  // le parseur lit les ms : les jeter rendrait .123 et .987 indiscernables
+  if MilliSecondOf(loc) <> 0 then fmt := 'yyyy-mm-dd"T"hh:nn:ss.zzz'
+  else fmt := 'yyyy-mm-dd"T"hh:nn:ss';
+  Result := FormatDateTime(fmt, loc) +
     Format('%s%.2d:%.2d', [sign, Abs(disp) div 60, Abs(disp) mod 60]);
 end;
 

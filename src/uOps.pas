@@ -75,7 +75,7 @@ function ToCR(const S: string): string;
 implementation
 
 uses
-  DateUtils, base64, md5, sha1, fpjson, jsonparser, uSha2, uBcrypt, uSecRand,
+  DateUtils, base64, md5, sha1, fpjson, uJsonSafe, uSha2, uBcrypt, uSecRand,
   DOM, XMLRead, XMLWrite;
 
 const
@@ -866,6 +866,9 @@ begin
   Result := AUser + ':{SHA}' + EncodeStringBase64(HashRawS(ohSHA1, APassword));
 end;
 
+// GetJSON lit le PREMIER document et ignore la suite : `{"a":1} {"b":2}`
+// passait pour valide et le formatage ne rendait que le premier objet. Le
+// parseur recursif impose aussi un plafond de profondeur.
 function JsonValidate(const S: string; out AError: string): Boolean;
 var
   d: TJSONData;
@@ -873,7 +876,7 @@ begin
   AError := '';
   d := nil;
   try
-    d := GetJSON(S);
+    d := SafeGetJSON(S);
     Result := d <> nil;
     if not Result then AError := 'empty document';
   except
@@ -894,7 +897,7 @@ begin
   AResult := '';
   d := nil;
   try
-    d := GetJSON(S);
+    d := SafeGetJSON(S);
     if d = nil then begin AError := 'empty document'; Exit(False); end;
     AResult := d.FormatJSON;
     Result := True;
@@ -974,7 +977,7 @@ begin
   AResult := '';
   d := nil;
   try
-    d := GetJSON(S);
+    d := SafeGetJSON(S);
     if d = nil then begin AError := 'empty document'; Exit(False); end;
     sorted := SortJsonNode(d);
     try
@@ -1002,7 +1005,7 @@ begin
   AResult := '';
   d := nil;
   try
-    d := GetJSON(S);
+    d := SafeGetJSON(S);
     if d = nil then begin AError := 'empty document'; Exit(False); end;
     oldC := TJSONData.CompressedJSON;   // AsJSON met des espaces par defaut
     TJSONData.CompressedJSON := True;

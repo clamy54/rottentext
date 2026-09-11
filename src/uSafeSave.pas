@@ -12,7 +12,13 @@ uses
 
 type
   TOwnedHandleStream = class(THandleStream)
+  private
+    FSynced: Boolean;
   public
+    // a appeler AVANT Free sur un temp qu'on va publier: leve si le noyau n'a
+    // pas pu poser les blocs. Sans ca on renomme, on annonce le succes et on
+    // purge la generation precedente sur une ecriture qui n'a jamais atterri.
+    procedure SyncOrFail;
     destructor Destroy; override;
   end;
 
@@ -22,6 +28,11 @@ function HasHardLinks(const APath: string): Boolean;
 function ResolveLink(const APath: string): string;
 function CreateTempIn(const ADest: string; out ATmpName: string): TOwnedHandleStream;
 function ReplaceByRename(const ATmp, ADest: string): Boolean;
+// '' = rien a signaler. Renseigne par le dernier ReplaceByRename* quand le
+// contenu est bien ecrit mais que proprietaire/droits n'ont pas pu etre repris,
+// ou que le fsync du repertoire a echoue.
+var
+  LastMetaError: string = '';
 // variantes "fichier prive" (session, settings, recent: une note non sauvee
 // peut contenir un secret). POSIX: 0600/0700 quel que soit l'umask; Windows:
 // no-op, le profil utilisateur est deja protege par ACL
@@ -29,6 +40,11 @@ function ReplaceByRenamePrivate(const ATmp, ADest: string): Boolean;
 procedure MakePrivateFile(const APath: string);
 procedure MakePrivateDir(const APath: string);
 procedure WriteInPlaceKeepLinks(const APath, AData: string);
+// meme filet, mais le contenu est deja dans ATmp: rien n'est charge en RAM.
+// Un rename casserait le groupe de hardlinks, on recopie sur la cible.
+procedure PublishKeepLinks(const ATmp, ADest: string);
+// False = le noyau n'a pas pu ecrire; l'appelant ne doit rien publier
+function SyncHandle(AHandle: THandle): Boolean;
 // WriteBuffer prend un Count Longint: au-dela de 2 Gio la taille wrappe en
 // silence ({$R-}) = copie tronquee
 procedure WriteAllBuf(ASt: TStream; const AData: string);
@@ -51,10 +67,66 @@ begin
   end;
 end;
 
+{$IFDEF WINDOWS}
+function FlushFileBuffers(h: THandle): LongBool; stdcall; external 'kernel32.dll';
+{$ENDIF}
+
+// write + close + rename ne rend atomique que le NOM: sans ca les blocs
+// peuvent rester en cache et une coupure publie un fichier vide ou tronque
+function SyncHandle(AHandle: THandle): Boolean;
+begin
+  Result := True;
+  if AHandle = THandle(-1) then Exit;
+  {$IFDEF WINDOWS}
+  Result := FlushFileBuffers(AHandle);
+  {$ELSE}
+  Result := fpfsync(cint(AHandle)) = 0;
+  {$ENDIF}
+end;
+
+procedure TOwnedHandleStream.SyncOrFail;
+begin
+  if FSynced then Exit;
+  if not SyncHandle(Handle) then
+    raise EStreamError.Create('Flushing the temporary file to disk failed');
+  FSynced := True;
+end;
+
+// POSIX: le rename lui-meme n'est durable qu'apres un fsync du repertoire.
+// Le fichier est deja publie: on ne peut plus echouer, on signale.
+procedure SyncDirOf(const APath: string);
+{$IFDEF UNIX}
+var
+  fd: cint;
+  dir: string;
+  ok: Boolean;
+{$ENDIF}
+begin
+  {$IFDEF UNIX}
+  dir := ExtractFileDir(APath);
+  if dir = '' then dir := '.';
+  fd := FpOpen(PChar(dir), O_RDONLY);
+  if fd < 0 then ok := False
+  else
+  begin
+    ok := fpfsync(fd) = 0;
+    FpClose(fd);
+  end;
+  if not ok and (LastMetaError = '') then
+    LastMetaError := Format('%s is replaced but its directory could not be ' +
+      'synced (durability not confirmed)', [ExtractFileName(APath)]);
+  {$ENDIF}
+end;
+
 destructor TOwnedHandleStream.Destroy;
 begin
   if Handle <> THandle(-1) then
+  begin
+    // filet pour les appelants qui ne publient pas: un destructeur ne peut pas
+    // lever, seul SyncOrFail remonte l'echec
+    if not FSynced then SyncHandle(Handle);
     FileClose(Handle);
+  end;
   inherited Destroy;
 end;
 
@@ -147,11 +219,14 @@ end;
 
 function ReplaceByRename(const ATmp, ADest: string): Boolean;
 begin
+  LastMetaError := '';
   // ReplaceFileW preserve attributs/ACL de la cible mais exige qu'elle existe
   if FileExists(ADest) then
     if ReplaceFileW(PWideChar(UTF8Decode(ADest)), PWideChar(UTF8Decode(ATmp)),
         nil, REPLACEFILE_IGNORE_MERGE_ERRORS, nil, nil) then
       Exit(True);
+  // MoveFileExW ne preserve PAS l'ACL de la cible (contrairement a ReplaceFileW):
+  // repli uniquement, quand la cible n'existe pas ou que le remplacement echoue
   Result := MoveFileExW(PWideChar(UTF8Decode(ATmp)),
     PWideChar(UTF8Decode(ADest)),
     MOVEFILE_REPLACE_EXISTING or MOVEFILE_COPY_ALLOWED);
@@ -202,34 +277,42 @@ var
   hasMeta: Boolean;
   um: TMode;
 begin
+  LastMetaError := '';
   hasMeta := fpStat(PChar(ADest), st) = 0; // metadonnees de l'original
-  Result := RenameFile(ATmp, ADest);       // rename POSIX = atomique
-  if not Result then Exit;
+  // pose AVANT le rename: apres, le fichier est deja publie et une fenetre
+  // s'ouvre ou il porte le mode du temp. Un chown refuse (pas root sur un
+  // fichier d'autrui) laisse le fichier a nous, comme avant.
   if hasMeta then
   begin
     // chown PUIS chmod: un chown efface setuid/setgid sur la plupart des systemes
-    fpChown(PChar(ADest), st.st_uid, st.st_gid);
-    fpChmod(PChar(ADest), st.st_mode and $0FFF);
+    if fpChown(PChar(ATmp), st.st_uid, st.st_gid) <> 0 then
+      LastMetaError := Format('owner of %s could not be preserved', [ADest]);
+    if fpChmod(PChar(ATmp), st.st_mode and $0FFF) <> 0 then
+      LastMetaError := Format('permissions of %s could not be preserved', [ADest]);
+    // ACL POSIX et attributs etendus ne sont PAS repris
   end
   else
   begin
     // fichier neuf: le temp est ne en 0600, on finit en creation normale
     um := fpUmask(0);
     fpUmask(um); // lire l'umask oblige a l'ecraser: on le remet aussitot
-    fpChmod(PChar(ADest), TMode(&666) and not um);
+    fpChmod(PChar(ATmp), TMode(&666) and not um);
   end;
+  Result := RenameFile(ATmp, ADest);       // rename POSIX = atomique
+  if Result then SyncDirOf(ADest);
 end;
 
 {$ENDIF}
 
 function ReplaceByRenamePrivate(const ATmp, ADest: string): Boolean;
 begin
+  LastMetaError := '';
   {$IFDEF UNIX}
   // pas de preservation de mode: la cible est a nous, et un 0644 herite
   // d'avant le durcissement ne doit pas survivre a la reecriture
+  fpChmod(PChar(ATmp), &600);
   Result := RenameFile(ATmp, ADest);
-  if Result then
-    fpChmod(PChar(ADest), &600);
+  if Result then SyncDirOf(ADest);
   {$ELSE}
   Result := ReplaceByRename(ATmp, ADest);
   {$ENDIF}
@@ -264,6 +347,7 @@ begin
     try
       if AData <> '' then
         WriteAllBuf(net, AData);
+      net.SyncOrFail; // un secours reste en cache n'en est pas un
     finally
       net.Free;
     end;
@@ -279,6 +363,9 @@ begin
       if AData <> '' then
         WriteAllBuf(fs, AData);
       fs.Size := Length(AData);
+      // ecriture sur place: pas de rename pour rattraper
+      if not SyncHandle(fs.Handle) then
+        raise EStreamError.Create('Flushing to disk failed');
     finally
       fs.Free;
     end;
@@ -290,6 +377,46 @@ begin
         LineEnding + '%s', [APath, E.Message, tmp]);
   end;
   DeleteFile(tmp);
+end;
+
+procedure PublishKeepLinks(const ATmp, ADest: string);
+const
+  BLK = 1024 * 1024;
+var
+  src, dst: TFileStream;
+  buf: TBytes;
+  n: Integer;
+begin
+  try
+    SetLength(buf, BLK);
+    src := TFileStream.Create(ATmp, fmOpenRead or fmShareDenyWrite);
+    try
+      // fmCreate tronquerait avant reecriture: une coupure laisserait tous les
+      // liens vides. Taille posee en dernier.
+      dst := TFileStream.Create(ADest, fmOpenReadWrite);
+      try
+        dst.Position := 0;
+        repeat
+          n := src.Read(buf[0], BLK);
+          if n > 0 then dst.WriteBuffer(buf[0], n);
+        until n <= 0;
+        dst.Size := src.Size;
+        if not SyncHandle(dst.Handle) then
+          raise EStreamError.Create('Flushing to disk failed');
+      finally
+        dst.Free;
+      end;
+    finally
+      src.Free;
+    end;
+  except
+    on E: Exception do
+      raise EStreamError.CreateFmt(
+        'Writing %s failed (%s).' + LineEnding +
+        'The target may be PARTIALLY WRITTEN; your full content was preserved in:' +
+        LineEnding + '%s', [ADest, E.Message, ATmp]);
+  end;
+  DeleteFile(ATmp);
 end;
 
 function CreateTempIn(const ADest: string; out ATmpName: string): TOwnedHandleStream;

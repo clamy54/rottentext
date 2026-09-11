@@ -18,7 +18,7 @@ function JwtDecode(const AToken: string): string;
 implementation
 
 uses
-  Classes, StrUtils, DateUtils, base64, fpjson, jsonparser;
+  Classes, StrUtils, DateUtils, base64, fpjson, jsonparser, uJsonSafe;
 
 function B64UrlDecode(const S: string): string;
 var
@@ -32,39 +32,11 @@ begin
   Result := DecodeStringBase64(t);
 end;
 
-// GetJSON est recursif : 100k '[' = debordement de pile, pas une exception
-function JsonTooDeep(const S: string; AMax: Integer): Boolean;
-var
-  i, d: Integer;
-  q: Boolean;
-begin
-  Result := True;
-  d := 0;
-  q := False;
-  i := 1;
-  while i <= Length(S) do
-  begin
-    if q then
-    begin
-      if S[i] = '\' then Inc(i)
-      else if S[i] = '"' then q := False;
-    end
-    else
-      case S[i] of
-        '"': q := True;
-        '[', '{': begin Inc(d); if d > AMax then Exit; end;
-        ']', '}': Dec(d);
-      end;
-    Inc(i);
-  end;
-  Result := False;
-end;
-
 function SafeSegment(const ASeg: string): string;
 begin
   Result := B64UrlDecode(ASeg);
   if Length(Result) > 1024 * 1024 then raise EJwtError.Create('Segment too large');
-  if JsonTooDeep(Result, 256) then raise EJwtError.Create('JSON nesting too deep');
+  if JsonTooDeep(Result, JSON_MAX_DEPTH) then raise EJwtError.Create('JSON nesting too deep');
 end;
 
 function PrettyJson(const ARaw: string): string;
@@ -73,7 +45,7 @@ var
 begin
   d := nil;
   try
-    d := GetJSON(ARaw);
+    d := SafeGetJSON(ARaw);
     if d = nil then Exit(ARaw);
     Result := d.FormatJSON;
   except
@@ -145,7 +117,7 @@ begin
     sb.Add(PrettyJson(SafeSegment(pl)));
 
     payload := nil;
-    try payload := GetJSON(SafeSegment(pl)); except end;
+    try payload := SafeGetJSON(SafeSegment(pl)); except end;
     try
     if payload is TJSONObject then
     begin

@@ -64,14 +64,25 @@ jobs:
           mirror="https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-aarch64"
           sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20macOS%20aarch64/Lazarus%204.8"
           dl="$HOME/laz-dl"; mkdir -p "$dl"
-          fetch() {  # $1 nom du fichier; garde la copie du cache si elle est la
-            [ -s "$dl/$1" ] && { echo "$1: depuis le cache"; return 0; }
-            curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && { echo "$1: depuis le miroir GitHub"; return 0; }
-            echo "$1: miroir indisponible, repli SourceForge" >&2
-            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+          # somme SHA-256 pinnee: HTTPS protege le transport, pas le contenu
+          # d'un miroir remplace. Verifie aussi la copie du cache, qui etait
+          # acceptee sur le seul critere "fichier non vide".
+          sha_of() {
+            if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+            else shasum -a 256 "$1" | awk '{print $1}'; fi
           }
-          fetch fpc-3.2.4rc1a.intelarm64-macosx.dmg
-          fetch lazarus-darwin-aarch64-4.8.zip
+          ok_sum() { [ "$(sha_of "$dl/$1")" = "$2" ]; }
+          fetch() {  # $1 nom du fichier, $2 sha256 attendu
+            [ -s "$dl/$1" ] && ok_sum "$1" "$2" && { echo "$1: depuis le cache"; return 0; }
+            if curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && ok_sum "$1" "$2"; then
+              echo "$1: depuis le miroir GitHub"; return 0
+            fi
+            echo "$1: miroir indisponible ou somme invalide, repli SourceForge" >&2
+            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+            ok_sum "$1" "$2" || { echo "$1: SHA-256 inattendu" >&2; exit 1; }
+          }
+          fetch fpc-3.2.4rc1a.intelarm64-macosx.dmg e7792c59a31982a00021566d1ab63b0c794ff87d63b6123fe0f45e8f5627f798
+          fetch lazarus-darwin-aarch64-4.8.zip e5e0bf52bca911d4605dc875bd924ff5c74a0d0f6cf5699b936b377cc1986d1b
           sudo hdiutil attach -noautoopen "$dl/fpc-3.2.4rc1a.intelarm64-macosx.dmg"
           # le dmg 3.2.4rc1a monte en fpc-3.2.4rc1...-flat: glob sur fpc-*
           pkg="$(find /Volumes/fpc-* -maxdepth 1 \( -name '*.mpkg' -o -name '*.pkg' \) | head -1)"
@@ -122,15 +133,26 @@ jobs:
           mirror="https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-linux-amd64"
           sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20Linux%20amd64%20DEB/Lazarus%204.8"
           dl="$HOME/laz-dl"; mkdir -p "$dl"
-          fetch() {
-            [ -s "$dl/$1" ] && { echo "$1: depuis le cache"; return 0; }
-            curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && { echo "$1: depuis le miroir GitHub"; return 0; }
-            echo "$1: miroir indisponible, repli SourceForge" >&2
-            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+          # somme SHA-256 pinnee: HTTPS protege le transport, pas le contenu
+          # d'un miroir remplace. Verifie aussi la copie du cache, qui etait
+          # acceptee sur le seul critere "fichier non vide".
+          sha_of() {
+            if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+            else shasum -a 256 "$1" | awk '{print $1}'; fi
           }
-          fetch fpc-laz_3.2.2-210709_amd64.deb
-          fetch fpc-src_3.2.2-210709_amd64.deb
-          fetch lazarus-project_4.8.0-0_amd64.deb
+          ok_sum() { [ "$(sha_of "$dl/$1")" = "$2" ]; }
+          fetch() {  # $1 nom du fichier, $2 sha256 attendu
+            [ -s "$dl/$1" ] && ok_sum "$1" "$2" && { echo "$1: depuis le cache"; return 0; }
+            if curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && ok_sum "$1" "$2"; then
+              echo "$1: depuis le miroir GitHub"; return 0
+            fi
+            echo "$1: miroir indisponible ou somme invalide, repli SourceForge" >&2
+            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
+            ok_sum "$1" "$2" || { echo "$1: SHA-256 inattendu" >&2; exit 1; }
+          }
+          fetch fpc-laz_3.2.2-210709_amd64.deb 92000f2b831184e153aab0c910f8ae9240450e5c6d76dc189cf53116ee501d83
+          fetch fpc-src_3.2.2-210709_amd64.deb 8c9e145d8056754a9ca39ce3e52e982b8e4816124984c5f542f2a874e721ad53
+          fetch lazarus-project_4.8.0-0_amd64.deb 401742cefb01ad99a628188034bf728fb5360d641ed2be5f91fb0ee183a301cd
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             "$dl/fpc-laz_3.2.2-210709_amd64.deb" \
@@ -174,12 +196,17 @@ jobs:
           $sf = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%204.8/$name/download"
           $dl = Join-Path $HOME "laz-dl"; New-Item -ItemType Directory -Force $dl | Out-Null
           $exe = Join-Path $dl $name
-          if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 0) {
+          # somme SHA-256 pinnee: HTTPS protege le transport, pas le contenu
+          # d'un miroir remplace. Le cache etait accepte sur sa seule taille.
+          $want = "ed25ee171d55e23cf14e0633159fdd2325efba56e186f8ab817ad3bf97d267d7"
+          function Test-Sum { param($p) (Test-Path $p) -and ((Get-FileHash -Algorithm SHA256 $p).Hash -eq $want) }
+          if (Test-Sum $exe) {
             Write-Output "${name}: depuis le cache"
           } else {
             try { curl.exe -fsSL --retry 3 -o $exe $mirror; if ($LASTEXITCODE -ne 0) { throw "miroir" }; Write-Output "${name}: depuis le miroir GitHub" }
             catch { Write-Warning "${name}: miroir indisponible, repli SourceForge"; curl.exe -fsSL --retry 3 -o $exe $sf; if ($LASTEXITCODE -ne 0) { throw "telechargement impossible" } }
           }
+          if (-not (Test-Sum $exe)) { throw "${name}: SHA-256 inattendu" }
           Start-Process -Wait -FilePath $exe -ArgumentList '/VERYSILENT','/NORESTART','/SP-','/SUPPRESSMSGBOXES','/DIR=C:\lazarus'
           if (-not (Test-Path 'C:\lazarus\lazbuild.exe')) { throw "lazbuild.exe absent apres installation" }
           & 'C:\lazarus\lazbuild.exe' --version

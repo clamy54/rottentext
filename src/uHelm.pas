@@ -231,6 +231,8 @@ var
   entries: Integer;
 begin
   Result := TStringList.Create;
+  // .Values.Image <> .Values.image : sans ca l'agregat de dossier fusionne les deux
+  Result.CaseSensitive := True;
   Result.Sorted := True;
   Result.Duplicates := dupIgnore;
   AFileCount := 0;
@@ -312,6 +314,19 @@ begin
   end;
 end;
 
+// une ref plus PROFONDE qu'une feuille de values n'est jamais couverte:
+// ni `image: ""` ni `image: {}` ne definissent `image.tag`
+function RefCovered(const ARef, AKey, AVal: string): Boolean;
+begin
+  if ARef = AKey then Exit(True);
+  if (Length(ARef) > Length(AKey)) and
+     (Copy(ARef, 1, Length(AKey) + 1) = AKey + '.') then
+    Exit(False);
+  // sens inverse: `.Values.image | toYaml` couvre image.repository
+  Result := (Length(AKey) > Length(ARef)) and
+    (Copy(AKey, 1, Length(ARef) + 1) = ARef + '.');
+end;
+
 // egaux ou l'un prefixe de l'autre : une ref `image` couvre `image.tag`
 function PathsIntersect(const A, B: string): Boolean;
 begin
@@ -335,7 +350,7 @@ begin
     begin
       hit := False;
       for j := 0 to vk.Count - 1 do
-        if PathsIntersect(ARefs[i], vk[j]) then begin hit := True; Break; end;
+        if RefCovered(ARefs[i], vk[j], vv[j]) then begin hit := True; Break; end;
       if not hit then missing.Add('  .Values.' + ARefs[i]);
     end;
     for j := 0 to vk.Count - 1 do

@@ -15,7 +15,7 @@ uses
   uInstance;
 
 const
-  RT_VERSION = '1.5';
+  RT_VERSION = '1.6';
 
 type
   TPaneUI = record
@@ -42,6 +42,7 @@ type
     FChordK: Boolean;
     FSessionWin: Boolean; // lancee SANS argument: seule elle porte la session
     FSessionDone: Boolean;
+    FSessWarned: string; // derniere alerte de session affichee
     FSessTimer: TTimer;
     FIpcTimer: TTimer;
     FPendingOpen: array of string;
@@ -92,6 +93,7 @@ type
     procedure HandleHexCaret(Sender: TObject);
     function DocMutationBlocked: Boolean;
     procedure SessionTick(Sender: TObject);
+    procedure ReportSessionWarning;
     procedure InstanceTick(Sender: TObject);
     procedure PendingOpenTick(Sender: TObject);
     procedure OpenDropped(const APath: string);
@@ -163,7 +165,9 @@ procedure TfrmMain.BuildUI;
 var
   wx, wy, ww, wh: Integer;
 begin
-  FSessionWin := ParamCount = 0;
+  // sans verrou, deux lancements sans argument restauraient la meme session
+  // et se purgeraient mutuellement les tampons des notes non sauvees
+  FSessionWin := (ParamCount = 0) and ClaimSessionSlot;
   Caption := 'RottenText';
   // rect sauve hors ecran (moniteur debranche): repli sur le defaut centre
   wx := SetWinX; wy := SetWinY; ww := SetWinW; wh := SetWinH;
@@ -330,11 +334,26 @@ begin
   FBootShown := True;
 end;
 
+// session ecrite mais durabilite non confirmee: le dire, une fois par etat
+// (l'autosave repasse toutes les quelques secondes)
+procedure TfrmMain.ReportSessionWarning;
+begin
+  if SessionWarning = '' then
+  begin
+    FSessWarned := '';
+    Exit;
+  end;
+  if SessionWarning = FSessWarned then Exit;
+  FSessWarned := SessionWarning; // pose AVANT le dialogue: le timer repasse pendant
+  MessageDlg('RottenText',
+    'Session saved, but ' + SessionWarning + '.', mtWarning, [mbOK], 0);
+end;
+
 // jamais avant la restauration: on ecraserait la session par l'onglet du boot
 procedure TfrmMain.SessionTick(Sender: TObject);
 begin
   if FSessionDone then
-    SessionSaveFrom(FMgr);
+    if SessionSaveFrom(FMgr) then ReportSessionWarning;
 end;
 
 function TfrmMain.DocMutationBlocked: Boolean;
@@ -730,7 +749,7 @@ begin
     begin
       if FSessionWin then
       begin
-        SessionSaveFrom(FMgr);
+        if SessionSaveFrom(FMgr) then ReportSessionWarning;
         CaptureWindowSettings;
         SettingsSave;
       end;
@@ -766,6 +785,7 @@ begin
       end;
       SessionSaveFrom(FMgr);
     end;
+    ReportSessionWarning;
     CaptureWindowSettings;
     SettingsSave;
   end;

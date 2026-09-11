@@ -27,6 +27,10 @@ function EnvFromYaml(const AText: string; out AErr: string): string;
 // cle validee + valeur quotee/echappee : le seul emetteur .env anti-injection
 function EmitEnvLine(const AKey, AValue: string): string;
 
+// coupe un commentaire de fin de valeur (` #` hors quotes). Quote non fermee
+// = valeur multi-ligne : rien n'est coupe.
+function EnvStripComment(const S: string): string;
+
 // lecture d'une valeur dotenv : doubles quotes = echappes \n \t \r \" \\
 // developpees (ce qu'EmitEnvLine ecrit, sinon JSON -> .env -> JSON rendait
 // des backslashes litteraux), simples quotes = verbatim, nu = verbatim.
@@ -36,7 +40,7 @@ function EnvDecodeValue(const S: string): string;
 implementation
 
 uses
-  StrUtils, fpjson, jsonparser, uYaml;
+  StrUtils, fpjson, jsonparser, uJsonSafe, uYaml;
 
 type
   TEnvKind = (ekBlank, ekComment, ekEntry, ekOther);
@@ -51,6 +55,68 @@ begin
   for i := 2 to Length(K) do
     if not (K[i] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '-']) then Exit;
   Result := True;
+end;
+
+function EnvStripComment(const S: string): string;
+var
+  i, st: Integer;
+  q: Char;
+begin
+  // la citation peut etre precedee d'espaces : `K= "texte # contenu"`
+  st := 1;
+  while (st <= Length(S)) and (S[st] in [' ', #9]) do Inc(st);
+  q := #0;
+  if (st <= Length(S)) and (S[st] in ['"', '''']) then q := S[st];
+  i := 1;
+  if q <> #0 then i := st + 1;
+  while i <= Length(S) do
+  begin
+    if q <> #0 then
+    begin
+      // `\'` echappe aussi entre apostrophes, comme dans EnvOpenQuote
+      if S[i] = '\' then Inc(i)
+      else if S[i] = q then q := #0;
+    end
+    else if (S[i] = '#') and ((i = 1) or (S[i - 1] = ' ') or (S[i - 1] = #9)) then
+      Exit(TrimRight(Copy(S, 1, i - 1)));
+    Inc(i);
+  end;
+  Result := TrimRight(S);
+end;
+
+// quote ouverte et jamais refermee : la valeur continue sur les lignes suivantes
+// `\'` traite comme un echappement (compose l'accepte). Biais assume: en
+// doutant on avale une ligne de plus plutot que de laisser fuir un corps de cle.
+function EnvOpenQuote(const S: string): Char;
+var
+  i, st: Integer;
+begin
+  Result := #0;
+  st := 1;
+  while (st <= Length(S)) and (S[st] in [' ', #9]) do Inc(st);
+  if (st > Length(S)) or not (S[st] in ['"', '''']) then Exit;
+  Result := S[st];
+  i := st + 1;
+  while i <= Length(S) do
+  begin
+    if S[i] = '\' then Inc(i)
+    else if S[i] = Result then Exit(#0);
+    Inc(i);
+  end;
+end;
+
+function EnvClosesQuote(const S: string; AQuote: Char): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  i := 1;
+  while i <= Length(S) do
+  begin
+    if S[i] = '\' then Inc(i)
+    else if S[i] = AQuote then Exit(True);
+    Inc(i);
+  end;
 end;
 
 function ClassifyEnv(const ALine: string; out AKey, AVal: string;
@@ -72,7 +138,8 @@ begin
   if eq = 0 then Exit(ekOther);
   AKey := Trim(Copy(work, 1, eq - 1));
   if not ValidEnvKey(AKey) then Exit(ekOther);
-  AVal := Copy(work, eq + 1, MaxInt);
+  // `K=value # note` : le commentaire n'appartient pas a la valeur
+  AVal := EnvStripComment(Copy(work, eq + 1, MaxInt));
   Result := ekEntry;
 end;
 
@@ -322,18 +389,27 @@ var
   i: Integer;
   key, val, ln: string;
   exp, changed: Boolean;
+  swallow: Char;
 begin
   lines := SplitLines(AText);
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
   try
+    swallow := #0;
     for i := 0 to lines.Count - 1 do
     begin
       ln := lines[i];
+      // corps d'un secret multi-ligne (PEM) deja masque : jamais recopie
+      if swallow <> #0 then
+      begin
+        if EnvClosesQuote(ln, swallow) then swallow := #0;
+        Continue;
+      end;
       if (ClassifyEnv(ln, key, val, exp) = ekEntry) and LooksSecret(key) then
       begin
         if exp then outp.Add('export ' + key + '=****')
         else outp.Add(key + '=****');
+        swallow := EnvOpenQuote(Trim(val));
       end
       else
         // verbatim, mais une URL a creds fuiterait : scrubee meme en commentaire
@@ -434,7 +510,7 @@ begin
   root := nil;
   try
     try
-      root := GetJSON(data);
+      root := SafeGetJSON(data);
     except
       on ex: Exception do begin AErr := ex.Message; Exit; end;
     end;

@@ -119,7 +119,7 @@ begin
       eq := Pos('=', ln);
       if eq = 0 then Continue;
       key := Trim(Copy(ln, 1, eq - 1));
-      val := EnvDecodeValue(Trim(Copy(ln, eq + 1, MaxInt)));
+      val := EnvDecodeValue(Trim(EnvStripComment(Copy(ln, eq + 1, MaxInt))));
       if not ValidSecretKey(key) then Continue;
       res.Add('  ' + key + ': ' + B64Encode(val));
     end;
@@ -129,60 +129,84 @@ begin
   end;
 end;
 
+// `# --- doc N: nom ---` quand le manifeste porte plusieurs ressources
+procedure EmitDocHeader(ARes: TStringList; ADoc: TYamlNode; AIdx, ACount: Integer);
+var
+  meta, nm: TYamlNode;
+  s: string;
+begin
+  if ACount < 2 then Exit;
+  s := Format('# --- document %d', [AIdx + 1]);
+  meta := ADoc.ChildByKey('metadata');
+  if (meta <> nil) and (meta.Kind = ykMap) then
+  begin
+    nm := meta.ChildByKey('name');
+    if (nm <> nil) and (nm.Kind = ykScalar) and (nm.Scalar <> '') then
+      // le nom vient du fichier : pas de saut de ligne dans un commentaire
+      s := s + ': ' + StringReplace(StringReplace(nm.Scalar,
+        #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  end;
+  ARes.Add(s + ' ---');
+end;
+
 function SecretDecode(const AYaml: string; out AErr: string): string;
 var
+  docs: TYamlDocs;
   root, data, sdata: TYamlNode;
   res: TStringList;
-  i: Integer;
+  i, di, found: Integer;
   dec: RawByteString;
 begin
   AErr := '';
   Result := '';
-  root := YamlParse(AYaml, AErr);
-  if root = nil then Exit;
+  docs := YamlParseDocs(AYaml, AErr);
+  if AErr <> '' then Exit;
   try
-    if root.Kind <> ykMap then
-    begin
-      AErr := 'not a Kubernetes manifest (expected a mapping)';
-      Exit;
-    end;
-    data := root.ChildByKey('data');
-    sdata := root.ChildByKey('stringData');
-    if ((data = nil) or (data.Kind <> ykMap)) and
-       ((sdata = nil) or (sdata.Kind <> ykMap)) then
-    begin
-      AErr := 'no data / stringData mapping found';
-      Exit;
-    end;
+    found := 0;
     res := TStringList.Create;
+    res.TextLineBreakStyle := tlbsLF;
     try
-      if (data <> nil) and (data.Kind = ykMap) then
-        for i := 0 to High(data.Keys) do
-        begin
-          if data.Vals[i].Kind <> ykScalar then
+      for di := 0 to High(docs) do
+      begin
+        root := docs[di];
+        if root.Kind <> ykMap then Continue;
+        data := root.ChildByKey('data');
+        sdata := root.ChildByKey('stringData');
+        if ((data = nil) or (data.Kind <> ykMap)) and
+           ((sdata = nil) or (sdata.Kind <> ykMap)) then Continue;
+        Inc(found);
+        EmitDocHeader(res, root, di, Length(docs));
+        if (data <> nil) and (data.Kind = ykMap) then
+          for i := 0 to High(data.Keys) do
           begin
-            res.Add(data.Keys[i] + '=<non-scalar>');
-            Continue;
+            if data.Vals[i].Kind <> ykScalar then
+            begin
+              res.Add(data.Keys[i] + '=<non-scalar>');
+              Continue;
+            end;
+            try
+              dec := B64Decode(Trim(data.Vals[i].Scalar));
+              EmitCmValue(res, data.Keys[i], dec);
+            except
+              res.Add(data.Keys[i] + '=<invalid base64>');
+            end;
           end;
-          try
-            dec := B64Decode(Trim(data.Vals[i].Scalar));
-            // une valeur multi-ligne (PEM, kubeconfig) emise brute injecterait
-            // des lignes dans le .env de sortie
-            EmitCmValue(res, data.Keys[i], dec);
-          except
-            res.Add(data.Keys[i] + '=<invalid base64>');
-          end;
-        end;
-      if (sdata <> nil) and (sdata.Kind = ykMap) then
-        for i := 0 to High(sdata.Keys) do
-          if sdata.Vals[i].Kind = ykScalar then
-            EmitCmValue(res, sdata.Keys[i], sdata.Vals[i].Scalar);
+        if (sdata <> nil) and (sdata.Kind = ykMap) then
+          for i := 0 to High(sdata.Keys) do
+            if sdata.Vals[i].Kind = ykScalar then
+              EmitCmValue(res, sdata.Keys[i], sdata.Vals[i].Scalar);
+      end;
+      if found = 0 then
+      begin
+        AErr := 'no data / stringData mapping found';
+        Exit;
+      end;
       Result := res.Text;
     finally
       res.Free;
     end;
   finally
-    root.Free;
+    YamlFreeDocs(docs);
   end;
 end;
 
@@ -222,71 +246,71 @@ end;
 
 procedure EmitCmValue(ARes: TStringList; const AKey, AVal: string);
 begin
-  if (Pos(#10, AVal) = 0) and (Pos(#13, AVal) = 0) then
-    ARes.Add(AKey + '=' + AVal)
-  else
-  begin
-    ARes.Add('# --- ' + AKey + ' (multi-line) ---');
-    ARes.AddText(AVal);
-    ARes.Add('# --- end ' + AKey + ' ---');
-  end;
+  // EmitEnvLine quote et echappe : une valeur multi-ligne (PEM, kubeconfig)
+  // recopiee brute injecterait des lignes AUTRE=valeur dans le .env de sortie
+  ARes.Add(EmitEnvLine(AKey, AVal));
 end;
 
 function ConfigMapDecode(const AYaml: string; out AErr: string): string;
 var
+  docs: TYamlDocs;
   root, data, bdata: TYamlNode;
   res: TStringList;
-  i: Integer;
+  i, di, found: Integer;
   dec: RawByteString;
 begin
   AErr := '';
   Result := '';
-  root := YamlParse(AYaml, AErr);
-  if root = nil then Exit;
+  docs := YamlParseDocs(AYaml, AErr);
+  if AErr <> '' then Exit;
   try
-    if root.Kind <> ykMap then
-    begin
-      AErr := 'not a Kubernetes manifest (expected a mapping)';
-      Exit;
-    end;
-    data := root.ChildByKey('data');
-    bdata := root.ChildByKey('binaryData');
-    if ((data = nil) or (data.Kind <> ykMap)) and
-       ((bdata = nil) or (bdata.Kind <> ykMap)) then
-    begin
-      AErr := 'no data / binaryData mapping found';
-      Exit;
-    end;
+    found := 0;
     res := TStringList.Create;
     res.TextLineBreakStyle := tlbsLF;
     try
-      if (data <> nil) and (data.Kind = ykMap) then
-        for i := 0 to High(data.Keys) do
-          if data.Vals[i].Kind = ykScalar then
-            EmitCmValue(res, data.Keys[i], data.Vals[i].Scalar)
-          else
-            res.Add(data.Keys[i] + '=<non-scalar>');
-      if (bdata <> nil) and (bdata.Kind = ykMap) then
-        for i := 0 to High(bdata.Keys) do
-        begin
-          if bdata.Vals[i].Kind <> ykScalar then
+      for di := 0 to High(docs) do
+      begin
+        root := docs[di];
+        if root.Kind <> ykMap then Continue;
+        data := root.ChildByKey('data');
+        bdata := root.ChildByKey('binaryData');
+        if ((data = nil) or (data.Kind <> ykMap)) and
+           ((bdata = nil) or (bdata.Kind <> ykMap)) then Continue;
+        Inc(found);
+        EmitDocHeader(res, root, di, Length(docs));
+        if (data <> nil) and (data.Kind = ykMap) then
+          for i := 0 to High(data.Keys) do
+            if data.Vals[i].Kind = ykScalar then
+              EmitCmValue(res, data.Keys[i], data.Vals[i].Scalar)
+            else
+              res.Add(data.Keys[i] + '=<non-scalar>');
+        if (bdata <> nil) and (bdata.Kind = ykMap) then
+          for i := 0 to High(bdata.Keys) do
           begin
-            res.Add(bdata.Keys[i] + '=<non-scalar>');
-            Continue;
+            if bdata.Vals[i].Kind <> ykScalar then
+            begin
+              res.Add(bdata.Keys[i] + '=<non-scalar>');
+              Continue;
+            end;
+            try
+              dec := B64Decode(Trim(bdata.Vals[i].Scalar));
+              EmitCmValue(res, bdata.Keys[i], dec);
+            except
+              res.Add(bdata.Keys[i] + '=<invalid base64>');
+            end;
           end;
-          try
-            dec := B64Decode(Trim(bdata.Vals[i].Scalar));
-            EmitCmValue(res, bdata.Keys[i], dec);
-          except
-            res.Add(bdata.Keys[i] + '=<invalid base64>');
-          end;
-        end;
+      end;
+      if found = 0 then
+      begin
+        AErr := 'no data / binaryData mapping found';
+        Exit;
+      end;
       Result := res.Text;
     finally
       res.Free;
     end;
   finally
-    root.Free;
+    YamlFreeDocs(docs);
   end;
 end;
 

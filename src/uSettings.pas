@@ -22,7 +22,7 @@ var
 implementation
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, uSafeSave, uThemeLoad, uEditorView;
+  Classes, SysUtils, fpjson, jsonparser, uJsonSafe, uSafeSave, uThemeLoad, uEditorView;
 
 const
   MAX_SETTINGS_BYTES = 64 * 1024;
@@ -110,7 +110,7 @@ begin
       StripBom(data);
       if data <> '' then
       begin
-        root := GetJSON(data);
+        root := SafeGetJSON(data);
         if (root <> nil) and (root.JSONType = jtObject) then
         begin
           obj := TJSONObject(root);
@@ -185,6 +185,7 @@ begin
     try
       if data <> '' then
         st.WriteBuffer(data[1], Length(data));
+      (st as TOwnedHandleStream).SyncOrFail;
     finally
       st.Free;
     end;

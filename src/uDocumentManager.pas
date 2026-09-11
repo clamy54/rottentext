@@ -98,7 +98,7 @@ implementation
 
 uses
   // verrou d'action: un dialogue natif n'incremente pas forcement ModalLevel
-  uActions;
+  uActions, uEncoding, uSafeSave;
 
 constructor TDocumentManager.Create(AHost: TWinControl);
 begin
@@ -578,6 +578,58 @@ begin
   Result := True;
 end;
 
+// True = on peut ecrire. Couvre les deux cas ou le disque n'est plus celui
+// qu'on a charge: stamp different, ou rechargement deja refuse par l'operateur
+function ConfirmOverwriteDisk(ADoc: TDocument): Boolean;
+begin
+  Result := True;
+  if ADoc.Conflict then
+  begin
+    Result := MessageDlg('RottenText',
+      Format('%s was changed by another program and you kept your version.' +
+        LineEnding + 'Overwrite the version on disk?', [ADoc.DisplayName]),
+      mtWarning, [mbYes, mbCancel], 0) = mrYes;
+    Exit;
+  end;
+  case ADoc.CheckDiskChange of
+    dcModified:
+      Result := MessageDlg('RottenText',
+        Format('%s has changed on disk since it was loaded.' + LineEnding +
+          'Overwrite the version on disk?', [ADoc.DisplayName]),
+        mtWarning, [mbYes, mbCancel], 0) = mrYes;
+    dcDeleted:
+      Result := MessageDlg('RottenText',
+        Format('%s no longer exists on disk.' + LineEnding +
+          'Save will recreate it. Continue?', [ADoc.DisplayName]),
+        mtWarning, [mbYes, mbCancel], 0) = mrYes;
+  end;
+end;
+
+// contenu ecrit mais proprietaire/droits non repris: ca doit se voir
+procedure WarnMetaLoss;
+begin
+  if LastMetaError = '' then Exit;
+  MessageDlg('RottenText',
+    'Saved, but ' + LastMetaError + '.', mtWarning, [mbOK], 0);
+  LastMetaError := '';
+end;
+
+// LConvEncoding jette en silence ce qu'il ne sait pas convertir
+function ConfirmLossyEncoding(ADoc: TDocument): Boolean;
+var
+  nm: string;
+begin
+  Result := True;
+  if not ADoc.EncodingLossy then Exit;
+  nm := '';
+  if (ADoc.Encoding >= 0) and (ADoc.Encoding <= High(Encodings)) then
+    nm := Encodings[ADoc.Encoding].Caption;
+  Result := MessageDlg('RottenText',
+    Format('Some characters cannot be represented in %s and would be lost.' +
+      LineEnding + 'Save anyway?', [nm]),
+    mtWarning, [mbYes, mbCancel], 0) = mrYes;
+end;
+
 function TDocumentManager.SaveDocAs(AIndex: Integer): Boolean;
 var
   doc: TDocument;
@@ -586,6 +638,9 @@ begin
   Result := False;
   doc := TDocument(FDocs[AIndex]);
   dlg := TSaveDialog.Create(nil);
+  // sans ofOverwritePrompt aucun widgetset ne demande rien: Save As ecrasait
+  // un fichier existant en silence
+  dlg.Options := dlg.Options + [ofOverwritePrompt];
   // doc tenu en travers du dialogue natif: un reload externe pourrait le liberer
   BeginActionModal;
   try
@@ -601,6 +656,11 @@ begin
           mtWarning, [mbOK], 0);
         Continue;
       end;
+      // re-choisir son propre chemin court-circuitait le controle de Save
+      if (not doc.Untitled) and SameFileName(dlg.FileName, doc.FileName) and
+         not ConfirmOverwriteDisk(doc) then
+        Continue;
+      if not ConfirmLossyEncoding(doc) then Continue;
       try
         doc.SaveToFile(dlg.FileName);
       except
@@ -612,6 +672,7 @@ begin
           Continue;
         end;
       end;
+      WarnMetaLoss;
       ApplyAutoSyntax(doc, dlg.FileName);
       RecentAdd(dlg.FileName);
       if AIndex = GetActiveIndex then
@@ -637,23 +698,12 @@ begin
     BeginActionModal;
     try
       // disque change et jamais recharge: ecrire ecraserait la version externe
-      case doc.CheckDiskChange of
-        dcModified:
-          if MessageDlg('RottenText',
-              Format('%s has changed on disk since it was loaded.' + LineEnding +
-                'Overwrite the version on disk?', [doc.DisplayName]),
-              mtWarning, [mbYes, mbCancel], 0) <> mrYes then
-            Exit(False);
-        dcDeleted:
-          if MessageDlg('RottenText',
-              Format('%s no longer exists on disk.' + LineEnding +
-                'Save will recreate it. Continue?', [doc.DisplayName]),
-              mtWarning, [mbYes, mbCancel], 0) <> mrYes then
-            Exit(False);
-      end;
+      if not ConfirmOverwriteDisk(doc) then Exit(False);
+      if not ConfirmLossyEncoding(doc) then Exit(False);
       try
         doc.SaveToFile(doc.FileName);
         Result := True;
+        WarnMetaLoss;
       except
         on E: Exception do
         begin
@@ -719,6 +769,12 @@ end;
 procedure TDocumentManager.RevertActive;
 begin
   if ActiveDoc = nil then Exit;
+  // relire le disque jette les modifs en cours (en hex aussi: l'overlay saute)
+  if ActiveDoc.Modified then
+    if MessageDlg('RottenText',
+        Format('Revert %s to the version on disk?' + LineEnding +
+          'Unsaved changes are lost.', [ActiveDoc.DisplayName]),
+        mtWarning, [mbYes, mbCancel], 0) <> mrYes then Exit;
   try
     ActiveDoc.Revert;
   except
@@ -805,7 +861,12 @@ begin
                 if SafeReload(d) then changed := True;
               end
               else
-                d.CaptureDiskState; // garder ses modifs: ne plus re-demander
+              begin
+                // garder ses modifs: ne plus re-demander, mais le save doit
+                // encore prevenir qu'il ecrase la version externe
+                d.CaptureDiskState;
+                d.Conflict := True;
+              end;
             end;
             Inc(i);
           end;

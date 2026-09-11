@@ -33,11 +33,17 @@ function SessionLoad(out S: TSession): Boolean;
 // doit repasser par les prompts au lieu de perdre les notes en silence
 function SessionSaveFrom(AMgr: TDocumentManager): Boolean;
 procedure SessionRestoreInto(AMgr: TDocumentManager; const S: TSession);
+// '' = rien a signaler. Sinon la derniere sauvegarde est ecrite mais sa
+// durabilite n'est pas confirmee (fsync d'un repertoire refuse). Une seule
+// valeur par sauvegarde: plusieurs publications, LastMetaError ne garde que la
+// derniere.
+var
+  SessionWarning: string = '';
 
 implementation
 
 uses
-  fpjson, jsonparser, uSafeSave, uDocument, uEncoding, uRecent, uHighlight;
+  fpjson, jsonparser, uJsonSafe, uSafeSave, uDocument, uEncoding, uRecent, uHighlight;
 
 const
   PROBE_BUDGET_MS   = 2000;             // budget TOTAL des sondes lentes
@@ -196,6 +202,24 @@ begin
   Result := (S <> '') and (Length(S) <= 64) and (ExtractFileName(S) = S);
 end;
 
+var
+  // tampons illisibles au restore: la purge les effacerait alors que la note
+  // est peut-etre encore la. La liste est RELUE ET REECRITE dans session.json,
+  // sinon le redemarrage suivant les perdrait de vue et la purge passerait.
+  OrphanBufs: TStringList = nil;
+
+procedure KeepOrphanBuf(const AName: string);
+begin
+  if not BufOK(AName) then Exit;
+  if OrphanBufs = nil then OrphanBufs := TStringList.Create;
+  if OrphanBufs.IndexOf(AName) < 0 then OrphanBufs.Add(AName);
+end;
+
+function IsOrphanBuf(const AName: string): Boolean;
+begin
+  Result := (OrphanBufs <> nil) and (OrphanBufs.IndexOf(AName) >= 0);
+end;
+
 // GetJSON refuse un BOM UTF-8
 procedure StripBom(var S: string);
 begin
@@ -241,7 +265,7 @@ begin
         fs.Free;
       end;
       StripBom(data);
-      root := GetJSON(data);
+      root := SafeGetJSON(data);
       if (root = nil) or (root.JSONType <> jtObject) then Exit;
       obj := TJSONObject(root);
       S.Split := JInt(obj, 'split', 0) <> 0;
@@ -249,6 +273,16 @@ begin
       if (S.ActiveGroup < 0) or (S.ActiveGroup > 1) then S.ActiveGroup := 0;
       S.Shown[0] := JInt(obj, 'shown0', -1);
       S.Shown[1] := JInt(obj, 'shown1', -1);
+      // tampons deja orphelins lors d'un demarrage precedent: les reprendre
+      // avant toute purge
+      if (obj.Find('orphans') <> nil) and
+         (obj.Find('orphans').JSONType = jtArray) then
+      begin
+        arr := TJSONArray(obj.Find('orphans'));
+        for i := 0 to arr.Count - 1 do
+          if arr[i].JSONType = jtString then
+            KeepOrphanBuf(arr[i].AsString);
+      end;
       if (obj.Find('files') = nil) or
          (obj.Find('files').JSONType <> jtArray) then Exit;
       arr := TJSONArray(obj.Find('files'));
@@ -367,6 +401,9 @@ begin
     try
       if data <> '' then
         st.WriteBuffer(data[1], Length(data));
+      // sans ca le json est commite et l'ancienne note purgee sur un tampon
+      // reste en cache
+      (st as TOwnedHandleStream).SyncOrFail;
     finally
       st.Free;
     end;
@@ -429,6 +466,7 @@ end;
 // sauvegarde ratee detruirait le dernier backup valide (et l'autosave repasse).
 function SessionSaveFrom(AMgr: TDocumentManager): Boolean;
 var
+  orph: TJSONArray;
   rootObj, e: TJSONObject;
   arr: TJSONArray;
   kept: TStringList;
@@ -438,11 +476,25 @@ var
   bufName, data, tmp: string;
   sr: TSearchRec;
   committed: Boolean;
+  warn: string;
+
+  procedure TakeWarn;
+  begin
+    if LastMetaError = '' then Exit;
+    if System.Pos(LastMetaError, warn) = 0 then
+    begin
+      if warn <> '' then warn := warn + ', ';
+      warn := warn + LastMetaError;
+    end;
+    LastMetaError := '';
+  end;
+
 begin
   Result := True; // toute perte possible d'untitled le passe a False
   kept := nil;
   tmp := '';
   committed := False;
+  warn := '';
   try
     ForceDirectories(SessionDir);
     MakePrivateDir(ConfigDir);
@@ -461,10 +513,21 @@ begin
     try
       arr := TJSONArray.Create;
       rootObj.Add('files', arr);
+      orph := nil;
       rootObj.Add('split', Ord(AMgr.Split));
       rootObj.Add('activeGroup', AMgr.ActiveGroup);
       rootObj.Add('shown0', -1);
       rootObj.Add('shown1', -1);
+      // report des orphelins: sans cette trace la purge du prochain lancement
+      // les supprimerait
+      if (OrphanBufs <> nil) and (OrphanBufs.Count > 0) then
+      begin
+        orph := TJSONArray.Create;
+        rootObj.Add('orphans', orph);
+        for i := 0 to OrphanBufs.Count - 1 do
+          if FileExists(SessionDir + OrphanBufs[i]) then
+            orph.Add(OrphanBufs[i]);
+      end;
       bufN := 0;
       for i := 0 to AMgr.Count - 1 do
       begin
@@ -487,6 +550,7 @@ begin
           bufName := Format('u%d_%d.txt', [gen, bufN]);
           if WriteBuffer(bufName, d.View.Syn.Lines) then
           begin
+            TakeWarn; // session/ et le repertoire du json sont deux fsync
             // le tampon existe deja sur disque: l'enregistrer dans kept AVANT
             // toute allocation, sinon l'except ne saurait pas le retirer
             try
@@ -530,11 +594,13 @@ begin
       try
         if data <> '' then
           st.WriteBuffer(data[1], Length(data));
+        (st as TOwnedHandleStream).SyncOrFail;
       finally
         st.Free;
       end;
       if ReplaceByRenamePrivate(tmp, SessionFile) then
       begin
+        TakeWarn;
         tmp := '';
         committed := True; // a partir d'ici les tampons neufs SONT la session
       end
@@ -545,19 +611,21 @@ begin
         Result := False;
       end;
     end;
-    if Result then
+    // un fsync de repertoire rate: les renames sont faits mais pas garantis
+    // sur disque, l'ancienne generation reste en secours jusqu'au prochain cycle
+    if Result and (warn = '') then
     begin
       // commit fait: purger les generations precedentes et les strays
       if FindFirst(SessionDir + 'u*.txt', faAnyFile, sr) = 0 then
       begin
         repeat
-          if kept.IndexOf(sr.Name) < 0 then
+          if (kept.IndexOf(sr.Name) < 0) and not IsOrphanBuf(sr.Name) then
             DeleteFile(SessionDir + sr.Name);
         until FindNext(sr) <> 0;
         SysUtils.FindClose(sr);
       end;
     end
-    else
+    else if not Result then
       // abort: l'ancien json et ses tampons restent le backup valide
       for i := 0 to kept.Count - 1 do
         DeleteFile(SessionDir + kept[i]);
@@ -571,6 +639,7 @@ begin
         DeleteFile(SessionDir + kept[i]);
   end;
   kept.Free;
+  if Result then SessionWarning := warn else SessionWarning := '';
 end;
 
 // ---------- restauration
@@ -639,7 +708,11 @@ begin
         d := AMgr.OpenFile(S.Entries[i].Path) // disparu depuis la sonde: nil
       else
       begin
-        if not ReadBuffer(S.Entries[i].Buf, content) then Continue;
+        if not ReadBuffer(S.Entries[i].Buf, content) then
+        begin
+          KeepOrphanBuf(S.Entries[i].Buf);
+          Continue;
+        end;
         d := AMgr.NewFile(g);
         d.View.Syn.Lines.Text := content;
         d.Modified := True; // tampon = contenu jamais sauve par definition
@@ -684,5 +757,8 @@ begin
     ShowEntry(S.Shown[1 - ag]);
   ShowEntry(S.Shown[ag]);
 end;
+
+finalization
+  FreeAndNil(OrphanBufs);
 
 end.

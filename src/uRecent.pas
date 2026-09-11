@@ -28,7 +28,7 @@ function RecentDisplay(AIndex: Integer): string; // assaini (libelle de menu)
 implementation
 
 uses
-  fpjson, jsonparser, uSafeSave;
+  fpjson, jsonparser, uJsonSafe, uSafeSave;
 
 const
   MAX_FILE_BYTES = 64 * 1024;
@@ -133,7 +133,7 @@ begin
       if (Length(data) >= 3) and (data[1] = #$EF) and (data[2] = #$BB) and
          (data[3] = #$BF) then
         Delete(data, 1, 3);
-      root := GetJSON(data);
+      root := SafeGetJSON(data);
       if (root = nil) or (root.JSONType <> jtArray) then Exit;
       arr := TJSONArray(root);
       for i := 0 to arr.Count - 1 do
@@ -176,6 +176,7 @@ begin
     try
       if data <> '' then
         st.WriteBuffer(data[1], Length(data));
+      (st as TOwnedHandleStream).SyncOrFail;
     finally
       st.Free;
     end;

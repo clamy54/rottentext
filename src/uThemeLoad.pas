@@ -33,7 +33,7 @@ procedure ReapplyEditorFont; // recharge le theme courant + pref
 implementation
 
 uses
-  fpjson, jsonparser, Graphics, uTheme, uFontEmbed;
+  fpjson, jsonparser, uJsonSafe, Graphics, uTheme, uFontEmbed;
 
 const
   MAX_THEME_BYTES = 256 * 1024;
@@ -126,7 +126,7 @@ begin
   root := nil;
   try
     try
-      root := GetJSON(data);
+      root := SafeGetJSON(data);
     except
       Exit;
     end;
@@ -230,7 +230,7 @@ begin
     // tout dans des LOCAUX: une exception ici ne doit laisser aucune globale
     // uTheme a moitie posee
     try
-      root := GetJSON(data);
+      root := SafeGetJSON(data);
       if (root = nil) or (root.JSONType <> jtObject) then Exit;
       obj := TJSONObject(root);
       // repartir des defauts: une cle absente ne doit pas heriter du theme precedent
@@ -330,7 +330,7 @@ begin
         root := nil;
         try
           try
-            root := GetJSON(data);
+            root := SafeGetJSON(data);
             if (root <> nil) and (root.JSONType = jtObject) then
               nm := SanitizeName(TJSONObject(root).Get('name', nm), nm);
           except

@@ -21,8 +21,15 @@ if (-not $lazbuild) {
 }
 if (-not $lazbuild) { throw "lazbuild introuvable. Ajoute-le au PATH ou installe Lazarus." }
 
-# tuer l'exe s'il tourne (sinon lien impossible)
-Get-Process RottenText -ErrorAction SilentlyContinue | Stop-Process -Force
+# l'exe verrouille le lien: demander la fermeture (les prompts de sauvegarde
+# s'affichent), et ne tuer qu'apres refus explicite
+$running = @(Get-Process RottenText -ErrorAction SilentlyContinue)
+foreach ($p in $running) { [void]$p.CloseMainWindow() }
+foreach ($p in $running) {
+  if (-not $p.WaitForExit(5000)) {
+    throw "RottenText (pid $($p.Id)) est toujours ouvert. Ferme-le, puis relance le build."
+  }
+}
 
 $buildArg = if ($Release) { '--build-mode=Release' } else { '' }
 Write-Output "lazbuild: $lazbuild"

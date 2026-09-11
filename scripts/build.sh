@@ -24,8 +24,12 @@ if [ -z "$lazbuild" ]; then
 fi
 [ -n "$lazbuild" ] || { echo "lazbuild introuvable. Ajoute-le au PATH ou installe Lazarus." >&2; exit 1; }
 
-# tuer l'exe s'il tourne (sinon lien impossible)
-pkill -f RottenText 2>/dev/null || true
+# l'exe verrouille le lien. On ne le tue PAS: l'appli n'a pas de gestionnaire
+# de SIGTERM, les documents non enregistres partiraient sans confirmation.
+if pgrep -x RottenText >/dev/null 2>&1; then
+  echo "RottenText tourne. Ferme-le (les prompts de sauvegarde s'affichent), puis relance le build." >&2
+  exit 1
+fi
 
 buildarg=""
 [ "${1:-}" = "--release" ] && buildarg="--build-mode=Release"

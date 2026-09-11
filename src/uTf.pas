@@ -313,7 +313,7 @@ var
 
   procedure InVarLine(const mL, rL: string);
   var
-    key, val, vm, hterm: string;
+    key, val, valClean, vm, hterm: string;
     vs, q, net: Integer;
   begin
     if (relDepth = 1) and AttrLine(mL, key, vs) and WantedKey(key) then
@@ -321,7 +321,12 @@ var
       vm := Copy(mL, vs, MaxInt);
       q := FirstUnbalancedClose(vm);
       if q > 0 then vm := Copy(vm, 1, q - 1);
-      val := Trim(Copy(rL, vs, Length(vm)));
+      // vm garde la longueur de la ligne mais un /* */ y est blanchi : borner
+      // sur le masque TrimRight, sinon `sensitive = true /* x */` n'est plus true
+      val := Trim(Copy(rL, vs, Length(TrimRight(vm))));
+      // le booleen se lit sur le MASQUE : `sensitive = /* x */ true` doit
+      // valoir true, et le texte original reste pour les autres attributs
+      valClean := Trim(vm);
       hterm := HeredocTerm(val);
       if hterm <> '' then
       begin
@@ -335,6 +340,8 @@ var
         begin
           capKey := key; capVal := val; capNet := net; capOver := False;
         end
+        else if key = 'sensitive' then
+          StoreAttr(key, valClean)
         else
           StoreAttr(key, val);
       end;

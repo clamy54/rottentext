@@ -76,6 +76,15 @@ begin
   if (V and $FFF00000) = $AC100000 then Exit('private');        // 172.16/12
   if (V and $FFFF0000) = $C0A80000 then Exit('private');        // 192.168/16
   if (V and $F0000000) = $E0000000 then Exit('multicast');      // 224/4
+  // plages speciales : annoncer `public` ferait croire a une adresse routable
+  if (V and $FF000000) = $00000000 then Exit('this-network');   // 0/8
+  if (V and $FFC00000) = $64400000 then Exit('cgnat');          // 100.64/10
+  if (V and $FFFFFF00) = $C0000200 then Exit('documentation');  // 192.0.2/24
+  if (V and $FFFFFF00) = $C6336400 then Exit('documentation');  // 198.51.100/24
+  if (V and $FFFFFF00) = $CB007100 then Exit('documentation');  // 203.0.113/24
+  if (V and $FFFE0000) = $C6120000 then Exit('benchmark');      // 198.18/15
+  if V = $FFFFFFFF then Exit('broadcast');
+  if (V and $F0000000) = $F0000000 then Exit('reserved');       // 240/4
   Result := 'public';
 end;
 

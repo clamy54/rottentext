@@ -291,6 +291,7 @@ begin
         st := CreateTempIn(path, tmp);
         try
           st.CopyFrom(rs, 0);
+          st.SyncOrFail;
         finally
           st.Free;
         end;

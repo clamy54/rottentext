@@ -38,7 +38,7 @@ const
 type
   TCronSpec = record
     Min, Hour, Dom, Mon, Dow: Int64; // bitmasks
-    DomStar, DowStar: Boolean;       // `*` nu (semantique OR de Vixie)
+    DomStar, DowStar: Boolean;       // champ COMMENCE par `*` (drapeau Vixie)
   end;
 
   TPart = record
@@ -145,7 +145,8 @@ var
 begin
   Result := False;
   AMask := 0;
-  AStar := False;
+  // drapeau Vixie : pose sur le PREMIER caractere, `*/2` compte comme `*`
+  AStar := (S <> '') and ((S[1] = '*') or (S[1] = '?'));
   AErr := '';
   if S = '' then begin AErr := 'empty field'; Exit; end;
   items := SplitCh(S, ',');
@@ -165,7 +166,6 @@ begin
     if (it = '*') or (it = '?') then // `?` Quartz tolere comme `*`
     begin
       a := ALo; b := AHi;
-      if (Length(items) = 1) and (step = 1) then AStar := True;
     end
     else
     begin
@@ -231,10 +231,11 @@ var
 begin
   if not BitSet(ASpec.Mon, AM) then Exit(False);
   dw := SysUtils.DayOfWeek(EncodeDate(AY, AM, AD)) - 1; // 0 = dimanche
-  if ASpec.DomStar and ASpec.DowStar then Exit(True);
-  if ASpec.DomStar then Exit(BitSet(ASpec.Dow, dw));
-  if ASpec.DowStar then Exit(BitSet(ASpec.Dom, AD));
-  Result := BitSet(ASpec.Dom, AD) or BitSet(ASpec.Dow, dw);
+  // Vixie : ET des que l'un des deux champs commence par `*`, OU sinon
+  if ASpec.DomStar or ASpec.DowStar then
+    Result := BitSet(ASpec.Dom, AD) and BitSet(ASpec.Dow, dw)
+  else
+    Result := BitSet(ASpec.Dom, AD) or BitSet(ASpec.Dow, dw);
 end;
 
 // 0 si aucun run sous SCAN_YEARS

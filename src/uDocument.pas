@@ -30,6 +30,7 @@ type
     FLargeFile: Boolean;
     FLoading: Boolean;
     FTornLoad: Boolean;  // reload interrompu en pleine mutation du buffer
+    FOddTail: Boolean;   // UTF-16 a octet final orphelin : save le perdrait
     FEncoding: Integer;  // index dans uEncoding.Encodings, garde pour Save
     FEol: TEolKind;      // fins de ligne du fichier, re-appliquees au save
     // TStrings.Text ajoute TOUJOURS un saut final: sans ce flag, Ctrl+S en
@@ -43,6 +44,7 @@ type
     // reload en echec: le stamp n'est PAS recapture (ca masquerait la modif
     // externe et un save ulterieur l'ecraserait sans bruit)
     FDeferredReload: Boolean;
+    FConflict: Boolean;
     FOnChange: TNotifyEvent;
     FOnFocus: TNotifyEvent;
     procedure SynChanged(Sender: TObject);
@@ -79,6 +81,11 @@ type
     property Eol: TEolKind read FEol write SetEol;
     property Group: Integer read FGroup write FGroup;
     property DeferredReload: Boolean read FDeferredReload write FDeferredReload;
+    // True = l'encodage courant perdrait des caracteres du buffer
+    function EncodingLossy: Boolean;
+    // disque modifie, rechargement refuse: le stamp ne signale plus rien, seul
+    // ce drapeau empeche un save d'ecraser la version externe sans prevenir
+    property Conflict: Boolean read FConflict write FConflict;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnFocus: TNotifyEvent read FOnFocus write FOnFocus;
   end;
@@ -404,6 +411,9 @@ begin
       AEnc := DetectEncoding(raw);
   end;
   FEncoding := AEnc;
+  // le decodeur UTF-16 travaille par paires : l'octet solitaire de fin serait
+  // jete en silence au prochain save
+  FOddTail := UTF16OddTail(raw, AEnc);
   txt := DecodeToUTF8(raw, AEnc);
   // EOL detecte sur le texte DECODE: en UTF-16 brut les CR/LF sont noyes dans
   // des paires avec 00
@@ -463,6 +473,10 @@ begin
     raise EStreamError.CreateFmt(
       'The last reload of %s was interrupted; the buffer may be incomplete.' +
       LineEnding + 'Use File > Revert File before saving.', [DisplayName]);
+  if FOddTail then
+    raise EStreamError.CreateFmt(
+      '%s is UTF-16 with a stray trailing byte; saving would drop it.' +
+      LineEnding + 'Use File > Reopen > Hex to edit it.', [DisplayName]);
   // Lines.Text sort en EOL plateforme: re-imposer celui du doc AVANT l'encodage
   txt := FView.Syn.Lines.Text;
   if not FTrailingEol then
@@ -489,6 +503,7 @@ begin
       try
         if raw <> '' then
           WriteAllBuf(st, raw);
+        st.SyncOrFail; // rien n'est publie sur une ecriture restee en cache
       finally
         st.Free;
       end;
@@ -526,12 +541,19 @@ begin
     LoadFromFile(FFileName);
 end;
 
+function TDocument.EncodingLossy: Boolean;
+begin
+  Result := (not IsHex) and (FView <> nil) and
+    EncodingIsLossy(FView.Syn.Lines.Text, FEncoding);
+end;
+
 procedure TDocument.CaptureDiskState;
 var
   t, s, id: Int64;
 begin
   FHasStamp := False;
   FDeferredReload := False;
+  FConflict := False;
   if FUntitled then Exit;
   if FileStamp(FFileName, t, s, id) then
   begin

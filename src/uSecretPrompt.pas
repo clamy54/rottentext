@@ -10,7 +10,9 @@ unit uSecretPrompt;
 // WindowServer; l'etat se desequilibre au fil d'une session (plusieurs
 // dialogues) et finit par bloquer l'app (roue coloree, quit force) au passage
 // de focus entre deux champs securises. On masque nous-memes: le champ affiche
-// des '*', le clair vit dans un buffer fantome cote LCL, jamais dans le widget.
+// des '*', le clair vit dans un buffer fantome cote LCL. Il transite quand
+// meme UNE passe par le widget: OnChange est notifie APRES la frappe ou le
+// collage, c'est la qu'on relit puis remplace le texte par des '*'.
 
 interface
 

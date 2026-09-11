@@ -1790,7 +1790,8 @@ var
   e: TSynEdit;
   src, err: string;
   onSel, big: Boolean;
-  node: TYamlNode;
+  docs: TYamlDocs;
+  i: Integer;
   d: TDocument;
   sl: TStringList;
 begin
@@ -1813,8 +1814,10 @@ begin
         'Sort keys rewrites the document: comments and original formatting are lost (undo available). Continue?',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
 
-  node := YamlParse(src, err);
-  if node = nil then
+  // documents separes : fusionner un manifeste k8s multi-ressources ecraserait
+  // les cles homonymes (kind, metadata) et le tri n'en reecrirait qu'une
+  docs := YamlParseDocs(src, err);
+  if err <> '' then
   begin
     MessageDlg('RottenText', 'Invalid YAML:'#10 + err, mtError, [mbOK], 0);
     Exit;
@@ -1823,14 +1826,24 @@ begin
     case TMenuItem(Sender).Tag of
       0:
         begin
-          MessageDlg('RottenText', 'Well-formed YAML (block subset).', mtInformation, [mbOK], 0);
+          if Length(docs) > 1 then
+            MessageDlg('RottenText', Format(
+              'Well-formed YAML (block subset), %d documents.', [Length(docs)]),
+              mtInformation, [mbOK], 0)
+          else
+            MessageDlg('RottenText', 'Well-formed YAML (block subset).', mtInformation, [mbOK], 0);
           Exit;
         end;
       1:
         begin
           sl := TStringList.Create;
           try
-            YamlFlatten(node, sl);
+            for i := 0 to High(docs) do
+            begin
+              if Length(docs) > 1 then
+                sl.Add(Format('# --- document %d ---', [i + 1]));
+              YamlFlatten(docs[i], sl);
+            end;
             d := FMgr.NewFile;
             if d = nil then Exit;
             d.View.Syn.Lines.Assign(sl);
@@ -1841,15 +1854,24 @@ begin
         end;
       else
         begin
-          YamlSortKeys(node);
-          src := YamlEmit(node);
+          // trier peut faire passer un alias avant son ancre = doc invalide
+          for i := 0 to High(docs) do
+            if YamlHasAlias(docs[i]) then
+            begin
+              MessageDlg('RottenText', 'This document uses anchors and aliases: '
+                + 'sorting could move an alias before its anchor.',
+                mtWarning, [mbOK], 0);
+              Exit;
+            end;
+          for i := 0 to High(docs) do YamlSortKeys(docs[i]);
+          src := YamlEmitDocs(docs);
           if e.CanFocus then e.SetFocus;
           if onSel then e.SelText := src
           else begin e.SelectAll; e.SelText := src; end;
         end;
     end;
   finally
-    node.Free;
+    YamlFreeDocs(docs);
   end;
 end;
 

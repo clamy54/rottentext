@@ -78,6 +78,14 @@ function DetectUTF16NoBom(const ARaw: string): Integer;
 function DecodeToUTF8(const ARaw: string; AEnc: Integer): string;
 function EncodeFromUTF8(const AText: string; AEnc: Integer): string;
 // octet nul dans la tete du fichier
+// False = des caracteres ne passent pas dans AEnc. LConvEncoding est en
+// ceemSkip par defaut : il les jette SANS rien dire (un emoji sauve en
+// cp1252 disparait du fichier).
+function EncodingIsLossy(const AText: string; AEnc: Integer): Boolean;
+
+// UTF-16 tronque : un octet final impair serait perdu au prochain save
+function UTF16OddTail(const ARaw: string; AEnc: Integer): Boolean;
+
 function LooksBinary(const ARaw: string): Boolean;
 
 implementation
@@ -234,6 +242,43 @@ begin
     bomUTF16LE: Result := #$FF#$FE + Result;
     bomUTF16BE: Result := #$FE#$FF + Result;
   end;
+end;
+
+function EncodingIsLossy(const AText: string; AEnc: Integer): Boolean;
+var
+  old: TConvertEncodingErrorMode;
+begin
+  Result := False;
+  if (AEnc < 0) or (AEnc > High(Encodings)) then Exit;
+  // Unicode complet : rien a perdre, et on evite une seconde conversion
+  if (Encodings[AEnc].ConvId = 'utf8') or (Encodings[AEnc].ConvId = 'utf16le') or
+     (Encodings[AEnc].ConvId = 'utf16be') then Exit;
+  old := ConvertEncodingErrorMode;
+  ConvertEncodingErrorMode := ceemException;
+  try
+    try
+      ConvertEncoding(AText, EncodingUTF8, Encodings[AEnc].ConvId);
+    except
+      Result := True;
+    end;
+  finally
+    ConvertEncodingErrorMode := old;
+  end;
+end;
+
+function UTF16OddTail(const ARaw: string; AEnc: Integer): Boolean;
+var
+  n: Integer;
+begin
+  Result := False;
+  if (AEnc < 0) or (AEnc > High(Encodings)) then Exit;
+  if (Encodings[AEnc].ConvId <> 'utf16le') and
+     (Encodings[AEnc].ConvId <> 'utf16be') then Exit;
+  n := Length(ARaw);
+  case Encodings[AEnc].Bom of
+    bomUTF16LE, bomUTF16BE: if n >= 2 then Dec(n, 2);
+  end;
+  Result := Odd(n);
 end;
 
 function LooksBinary(const ARaw: string): Boolean;

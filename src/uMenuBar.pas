@@ -331,7 +331,8 @@ begin
   mi := AddItem(sub, m, 'PowerShell', @A.ToolsTransform); mi.Tag := 31;
   mi := AddItem(sub, m, 'JSON', @A.ToolsTransform); mi.Tag := 32;
   mi := AddItem(sub, m, 'YAML', @A.ToolsTransform); mi.Tag := 33;
-  mi := AddItem(sub, m, 'SQL', @A.ToolsTransform); mi.Tag := 34;
+  // ANSI seulement : sur MySQL backslash-escapes le doublage de quote ne suffit pas
+  mi := AddItem(sub, m, 'SQL (ANSI quotes)', @A.ToolsTransform); mi.Tag := 34;
   AddSep(sub, m);
   mi := AddItem(sub, m, 'sed (pattern)', @A.ToolsTransform); mi.Tag := 35;
   mi := AddItem(sub, m, 'sed (replacement)', @A.ToolsTransform); mi.Tag := 36;

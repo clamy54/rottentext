@@ -33,7 +33,7 @@ function RdnAttrValue(const ADn: string; out AAttr, AValue: string): Boolean;
 implementation
 
 uses
-  SysUtils, base64;
+  Classes, SysUtils, base64;
 
 function NeedsB64(const V: string): Boolean;
 var
@@ -108,35 +108,142 @@ begin
   Result := Result + LineEnding;   // ligne vide = separateur d'entrees LDIF
 end;
 
+function HexNib(c: Char; out V: Integer): Boolean;
+begin
+  Result := True;
+  case c of
+    '0'..'9': V := Ord(c) - Ord('0');
+    'a'..'f': V := Ord(c) - Ord('a') + 10;
+    'A'..'F': V := Ord(c) - Ord('A') + 10;
+    else begin V := 0; Result := False; end;
+  end;
+end;
+
 function RdnAttrValue(const ADn: string; out AAttr, AValue: string): Boolean;
 var
-  comma, eq, i: Integer;
-  first: string;
+  sep, eq, i, hi, lo: Integer;
+  first, dec: string;
 begin
   AAttr := ''; AValue := '';
-  // premiere virgule NON echappee (cn=Doe\, John,ou=...)
-  comma := 0;
+  // premier separateur NON echappe (cn=Doe\, John,ou=... ; `+` = RDN multiple)
+  sep := 0;
   i := 1;
   while i <= Length(ADn) do
   begin
     if ADn[i] = '\' then Inc(i)
-    else if ADn[i] = ',' then begin comma := i; Break; end;
+    else if (ADn[i] = ',') or (ADn[i] = '+') then begin sep := i; Break; end;
     Inc(i);
   end;
-  if comma > 0 then first := Copy(ADn, 1, comma - 1) else first := ADn;
+  if sep > 0 then first := Copy(ADn, 1, sep - 1) else first := ADn;
   first := Trim(first);
   eq := Pos('=', first);
   if eq = 0 then Exit(False);
   AAttr := Trim(Copy(first, 1, eq - 1));
   AValue := Trim(Copy(first, eq + 1, MaxInt));
-  // \X -> X : la valeur d'attribut est en clair, l'echappement est du DN
+  // RFC 4514 : \XX est un octet hex, \X un caractere echappe
+  dec := '';
   i := 1;
-  while i < Length(AValue) do
+  while i <= Length(AValue) do
   begin
-    if AValue[i] = '\' then Delete(AValue, i, 1);
+    if (AValue[i] = '\') and (i < Length(AValue)) then
+    begin
+      if (i + 2 <= Length(AValue)) and HexNib(AValue[i + 1], hi) and
+         HexNib(AValue[i + 2], lo) then
+      begin
+        dec := dec + Chr(hi * 16 + lo);
+        Inc(i, 3);
+        Continue;
+      end;
+      dec := dec + AValue[i + 1];
+      Inc(i, 2);
+      Continue;
+    end;
+    dec := dec + AValue[i];
     Inc(i);
   end;
+  AValue := dec;
   Result := (AAttr <> '') and (AValue <> '');
+end;
+
+// composants du PREMIER RDN. Un RDN multi-value (uid=a+cn=b) exige que
+// CHAQUE composant existe comme attribut, sinon le serveur refuse l'entree.
+procedure RdnComponents(const ADn: string; AAttrs, AValues: TStrings);
+var
+  i, start: Integer;
+  piece, a, v: string;
+
+  procedure Take(const P: string);
+  begin
+    if Trim(P) = '' then Exit;
+    if RdnAttrValue(Trim(P), a, v) then
+    begin
+      AAttrs.Add(a);
+      AValues.Add(v);
+    end;
+  end;
+
+begin
+  start := 1;
+  i := 1;
+  while i <= Length(ADn) do
+  begin
+    if ADn[i] = '\' then Inc(i)
+    else if ADn[i] = ',' then Break
+    else if ADn[i] = '+' then
+    begin
+      Take(Copy(ADn, start, i - start));
+      start := i + 1;
+    end;
+    Inc(i);
+  end;
+  piece := Copy(ADn, start, i - start);
+  Take(piece);
+end;
+
+// valeur du composant AAttr du premier RDN, a defaut celle du premier
+// composant (description=x+cn=g -> cn: g, pas cn: x)
+function RdnValueFor(const ADn, AAttr: string): string;
+var
+  at, vl: TStringList;
+  i: Integer;
+begin
+  Result := '';
+  at := TStringList.Create;
+  vl := TStringList.Create;
+  try
+    RdnComponents(ADn, at, vl);
+    for i := 0 to at.Count - 1 do
+      if SameText(at[i], AAttr) then Exit(vl[i]);
+    if at.Count > 0 then Result := vl[0];
+  finally
+    at.Free;
+    vl.Free;
+  end;
+end;
+
+// composants du RDN autres que (AAttr, AVal) deja emis par l'appelant. Le
+// filtre porte sur le couple: description=x+cn=g emet description: x
+function EmitRdnExtras(const ADn, AAttr, AVal: string): string;
+var
+  at, vl: TStringList;
+  i: Integer;
+  skipped: Boolean;
+begin
+  Result := '';
+  skipped := False;
+  at := TStringList.Create;
+  vl := TStringList.Create;
+  try
+    RdnComponents(ADn, at, vl);
+    for i := 0 to at.Count - 1 do
+      if not skipped and SameText(at[i], AAttr) and (vl[i] = AVal) then
+        skipped := True
+      else
+        Result := Result + EmitAttr(at[i], vl[i]);
+  finally
+    at.Free;
+    vl.Free;
+  end;
 end;
 
 function RdnValue(const ADn: string): string;
@@ -150,7 +257,7 @@ function BuildLdifRoot(const ADn, AOrg, ADescription: string): string;
 var
   dc, org: string;
 begin
-  dc := RdnValue(ADn);
+  dc := RdnValueFor(ADn, 'dc');
   org := AOrg;
   if org = '' then org := dc;
   Result := EmitAttr('dn', ADn);
@@ -164,24 +271,30 @@ begin
 end;
 
 function BuildLdifOU(const ADn, ADescription: string): string;
+var
+  v: string;
 begin
   Result := EmitAttr('dn', ADn);
   Result := Result + 'objectClass: top' + LineEnding;
   Result := Result + 'objectClass: organizationalUnit' + LineEnding;
-  Result := Result + EmitAttr('ou', RdnValue(ADn));
+  v := RdnValueFor(ADn, 'ou');
+  Result := Result + EmitAttr('ou', v);
+  Result := Result + EmitRdnExtras(ADn, 'ou', v);
   Result := Result + EmitAttr('description', ADescription);
   Result := Result + LineEnding;
 end;
 
 function BuildLdifGroup(const ADn, AGidNumber, AMembers, ADescription: string): string;
 var
-  norm, m: string;
+  norm, m, v: string;
   i: Integer;
 begin
   Result := EmitAttr('dn', ADn);
   Result := Result + 'objectClass: top' + LineEnding;
   Result := Result + 'objectClass: posixGroup' + LineEnding;
-  Result := Result + EmitAttr('cn', RdnValue(ADn));
+  v := RdnValueFor(ADn, 'cn');
+  Result := Result + EmitAttr('cn', v);
+  Result := Result + EmitRdnExtras(ADn, 'cn', v);
   Result := Result + EmitAttr('gidNumber', AGidNumber);
   norm := AMembers;
   for i := 1 to Length(norm) do
@@ -198,13 +311,15 @@ end;
 
 function BuildLdifGroupOfNames(const ADn, AMembers, ADescription: string): string;
 var
-  norm, mdn: string;
+  norm, mdn, v: string;
   i: Integer;
 begin
   Result := EmitAttr('dn', ADn);
   Result := Result + 'objectClass: top' + LineEnding;
   Result := Result + 'objectClass: groupOfNames' + LineEnding;
-  Result := Result + EmitAttr('cn', RdnValue(ADn));
+  v := RdnValueFor(ADn, 'cn');
+  Result := Result + EmitAttr('cn', v);
+  Result := Result + EmitRdnExtras(ADn, 'cn', v);
   // separateur ';' seulement : un DN contient des virgules
   norm := AMembers;
   repeat
@@ -219,17 +334,18 @@ end;
 
 function BuildLdifService(const ADn, AUserPassword, ADescription: string): string;
 var
-  attr, val: string;
+  val: string;
 begin
-  RdnAttrValue(ADn, attr, val);
+  // uid pris sur le composant uid= s'il existe (cn=Alice+uid=alice), sinon
+  // sur le premier; les autres composants (cn=svc) sortent en extras
+  val := RdnValueFor(ADn, 'uid');
   Result := EmitAttr('dn', ADn);
   Result := Result + 'objectClass: top' + LineEnding;
   Result := Result + 'objectClass: account' + LineEnding;
   if AUserPassword <> '' then
     Result := Result + 'objectClass: simpleSecurityObject' + LineEnding;
   Result := Result + EmitAttr('uid', val);        // account : uid MUST
-  if SameText(attr, 'cn') then
-    Result := Result + EmitAttr('cn', val);        // RDN cn= : l'attribut doit exister aussi
+  Result := Result + EmitRdnExtras(ADn, 'uid', val);
   Result := Result + EmitAttr('userPassword', AUserPassword);
   Result := Result + EmitAttr('description', ADescription);
   Result := Result + LineEnding;
