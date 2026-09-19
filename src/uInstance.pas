@@ -36,6 +36,8 @@ function CreateMutexW(lpAttr: Pointer; bInitialOwner: LongBool;
   lpName: PWideChar): THandle; stdcall; external 'kernel32.dll' name 'CreateMutexW';
 function CloseHandle(hObject: THandle): LongBool; stdcall;
   external 'kernel32.dll' name 'CloseHandle';
+function AllowSetForegroundWindow(dwProcessId: LongWord): LongBool; stdcall;
+  external 'user32.dll' name 'AllowSetForegroundWindow';
 {$ENDIF}
 
 const
@@ -211,6 +213,11 @@ begin
         ack.StartServer;
         {$IFDEF UNIX}FpChmod(ack.ServerID, &600);{$ENDIF}
         cli.Active := True;
+        {$IFDEF WINDOWS}
+        // le droit de premier plan est a NOUS (lances par l'Explorateur): sans
+        // le ceder, le serveur ne fait que clignoter dans la barre des taches
+        AllowSetForegroundWindow(LongWord(-1)); // ASFW_ANY
+        {$ENDIF}
         // horodatage pose au plus pres de l'envoi: le serveur mesure l'age
         cli.SendStringMessage('OPEN'#1 + ack.ServerID + #1 +
           IntToStr(GetTickCount64) + #1 + full);

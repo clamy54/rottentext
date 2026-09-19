@@ -15,7 +15,7 @@ uses
   uInstance;
 
 const
-  RT_VERSION = '1.6';
+  RT_VERSION = '1.7';
 
 type
   TPaneUI = record
@@ -384,6 +384,9 @@ begin
   if n > 0 then
   begin
     if not Visible then Show;
+    // reduite dans la barre des taches: BringToFront seul la laisse en bas.
+    // Restore rend l'etat d'avant (maximisee reste maximisee).
+    if WindowState = wsMinimized then Application.Restore;
     {$IFDEF DARWIN}
     // c'est un autre process qui a ouvert le fichier: personne n'a active l'app
     NSApplication.sharedApplication.activateIgnoringOtherApps(True);
