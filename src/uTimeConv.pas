@@ -14,7 +14,7 @@ function TimestampReport(const S: string): string;
 implementation
 
 uses
-  Classes, SysUtils, DateUtils;
+  Classes, SysUtils, DateUtils, uTz;
 
 const
   MAXFOUND = 200;
@@ -56,20 +56,26 @@ begin
     if l = MONTHS[i] then Exit(i);
 end;
 
+// .zzz seulement si non nul : 1700000000123 et ...999 sortaient identiques
+function IsoFmt(T: TDateTime): string;
+begin
+  if MilliSecondOf(T) <> 0 then Result := 'yyyy-mm-dd"T"hh:nn:ss.zzz'
+  else Result := 'yyyy-mm-dd"T"hh:nn:ss';
+end;
+
 function IsoUtc(UTC: TDateTime): string;
 begin
-  Result := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', UTC) + 'Z';
+  Result := FormatDateTime(IsoFmt(UTC), UTC) + 'Z';
 end;
 
 function IsoLocal(UTC: TDateTime): string;
 var
-  bias, disp: Integer;
+  disp: Integer;
   sign: Char;
 begin
-  bias := GetLocalTimeOffset;   // minutes : UTC = local + bias
-  disp := -bias;
+  disp := LocalOffsetAt(UTC);   // decalage A CETTE DATE (ete/hiver)
   if disp >= 0 then sign := '+' else sign := '-';
-  Result := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', UniversalTimeToLocal(UTC)) +
+  Result := FormatDateTime(IsoFmt(UTC), UtcToLocalAt(UTC)) +
     Format('%s%.2d:%.2d', [sign, Abs(disp) div 60, Abs(disp) mod 60]);
 end;
 
@@ -189,7 +195,7 @@ var
           end
           else
           begin
-            f.UTC := LocalTimeToUniversal(dt);
+            f.UTC := LocalToUtcAt(dt);
             f.Kind := 'ISO 8601 (local assumed)';
           end;
           f.Raw := Copy(S, i, len);
@@ -247,7 +253,7 @@ var
              TryEncodeDateTime(y, mo, d, hh, nn, ss, 0, dt) and SpanFree(i, len) then
           begin
             if hasZone then f.UTC := dt - zsign * (zh * 60 + zm) / (24 * 60)
-            else f.UTC := LocalTimeToUniversal(dt);
+            else f.UTC := LocalToUtcAt(dt);
             f.Kind := 'Apache CLF';
             f.Raw := Copy(S, i, len);
             f.Pos_ := i;
@@ -297,7 +303,7 @@ var
             if TryEncodeDateTime(y, mo, d, hh, nn, ss, 0, dt) and
                SpanFree(i, len) then
             begin
-              f.UTC := LocalTimeToUniversal(dt);
+              f.UTC := LocalToUtcAt(dt);
               f.Kind := Format('syslog (year %d assumed)', [y]);
               f.Raw := Copy(S, i, len);
               f.Pos_ := i;
@@ -315,9 +321,10 @@ var
 
   procedure ScanUnix;
   var
-    i, j, len: Integer;
+    i, j, len, st: Integer;
     v: Int64;
     f: TFound;
+    neg: Boolean;
   begin
     i := 1;
     while i <= Length(S) do
@@ -328,26 +335,31 @@ var
         j := i;
         while (j <= Length(S)) and IsDig(S[j]) do Inc(j);
         len := j - i;
+        // `-1234567890` isole = avant 1970, pas 2009 avec le signe perdu
+        neg := (i > 1) and (S[i - 1] = '-') and ((i = 2) or not IsAlnumC(S[i - 2]));
+        st := i;
+        if neg then st := i - 1;
         if ((j > Length(S)) or not IsAlnumC(S[j])) and
-           ((len = 10) or (len = 13)) and SpanFree(i, len) then
+           (len in [10, 13, 16, 19]) and SpanFree(st, j - st) then
         begin
           v := StrToInt64Def(Copy(S, i, len), -1);
           if v >= 0 then // 0 = epoch 1970, legitime
           begin
-            if len = 13 then
-            begin
-              f.UTC := UnixToDateTime(v div 1000);
-              f.Kind := 'unix milliseconds';
-            end
-            else
-            begin
-              f.UTC := UnixToDateTime(v);
-              f.Kind := 'unix seconds';
+            if neg then v := -v;
+            // la fraction est gardee : .123 et .999 ne sortaient pas differemment
+            case len of
+              13: begin f.UTC := UnixToDateTime(v div 1000) + (v mod 1000) / 86400000.0;
+                        f.Kind := 'unix milliseconds'; end;
+              16: begin f.UTC := UnixToDateTime(v div 1000000) + (v mod 1000000) / 86400000000.0;
+                        f.Kind := 'unix microseconds'; end;
+              19: begin f.UTC := UnixToDateTime(v div 1000000000) + (v mod 1000000000) / 86400000000000.0;
+                        f.Kind := 'unix nanoseconds'; end;
+              else begin f.UTC := UnixToDateTime(v); f.Kind := 'unix seconds'; end;
             end;
-            f.Raw := Copy(S, i, len);
-            f.Pos_ := i;
+            f.Raw := Copy(S, st, j - st);
+            f.Pos_ := st;
             AddFound(f);
-            MarkUsed(i, len);
+            MarkUsed(st, j - st);
           end;
         end;
         i := j;

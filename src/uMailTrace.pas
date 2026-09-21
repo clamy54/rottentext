@@ -316,7 +316,7 @@ end;
 
 function ParseDate822(const DS: string; out UTC: TDateTime): Boolean;
 var
-  i, L, day, mon, yr, hh, nn, ss, zmin, sgn: Integer;
+  i, L, day, mon, yr, hh, nn, ss, zmin, sgn, zst: Integer;
   dt: TDateTime;
   w: string;
 
@@ -407,9 +407,20 @@ begin
     begin
       if DS[i] = '-' then sgn := -1;
       Inc(i);
+      zst := i;
       zmin := ReadNum;
-      if zmin < 0 then zmin := 0
-      else zmin := (zmin div 100) * 60 + (zmin mod 100);
+      if (i <= L) and (DS[i] = ':') and (i - zst = 2) then
+      begin
+        // `+05:30` (hors RFC mais vu) : lu comme +5 minutes sinon
+        Inc(i);
+        zmin := zmin * 100 + ReadNum;
+        Inc(zst, 1);
+      end;
+      // exactement HHMM, HH <= 23, MM <= 59 ; sinon -0000 (zone inconnue)
+      if (zmin < 0) or (i - zst <> 4) or (zmin div 100 > 23) or (zmin mod 100 > 59) then
+        zmin := 0
+      else
+        zmin := (zmin div 100) * 60 + (zmin mod 100);
     end
     else if (i <= L) and IsAlphaC(DS[i]) then
     begin
@@ -434,7 +445,7 @@ end;
 
 function IPish(const T: string): Boolean;
 var
-  i, d, c: Integer;
+  i, d, c, v, n: Integer;
 begin
   Result := False;
   if (T = '') or (Length(T) > 45) then Exit;
@@ -449,6 +460,25 @@ begin
       else Exit;
     end;
   Result := (d = 3) or (c >= 2);
+  // pointe : quatre nombres decimaux <= 255, sinon `ab.cd.ef.ab` passait pour une IP
+  if Result and (c = 0) then
+  begin
+    v := 0; n := 0;
+    for i := 1 to Length(T) do
+      if T[i] = '.' then
+      begin
+        if (n = 0) or (v > 255) then Exit(False);
+        v := 0; n := 0;
+      end
+      else if T[i] in ['0'..'9'] then
+      begin
+        v := v * 10 + Ord(T[i]) - Ord('0');
+        Inc(n);
+      end
+      else
+        Exit(False);
+    if (n = 0) or (v > 255) then Exit(False);
+  end;
 end;
 
 function ExtractBrIP(const C: string): string;

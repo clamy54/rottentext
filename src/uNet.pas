@@ -143,7 +143,7 @@ begin
     sb.Add(Format('HostMax:    %s', [IPToStr(hmax)]));
     sb.Add(Format('Hosts:      %s usable', [IntToStr(usable)]));
     sb.Add(Format('Total:      %s addresses', [IntToStr(total)]));
-    sb.Add(Format('Type:       %s', [AddrType(network)]));
+    sb.Add(Format('Type:       %s', [AddrType(ip)])); // l'adresse, pas le reseau (8.8.8.8/1 n'est pas this-network)
     Result := sb.Text;
   finally
     sb.Free;
@@ -217,8 +217,12 @@ begin
   FillChar(A, SizeOf(A), 0);
   FillChar(w{%H-}, SizeOf(w), 0);
   s := Trim(AInput);
-  p := Pos('%', s);   // zone (fe80::1%eth0) ignoree
-  if p > 0 then s := Copy(s, 1, p - 1);
+  p := Pos('%', s);   // zone (fe80::1%eth0) ignoree, mais pas vide
+  if p > 0 then
+  begin
+    if p = Length(s) then Exit;
+    s := Copy(s, 1, p - 1);
+  end;
   if s = '' then Exit;
   p := Pos('::', s);
   if p > 0 then
@@ -226,6 +230,7 @@ begin
     l := Copy(s, 1, p - 1);
     r := Copy(s, p + 2, MaxInt);
     if Pos('::', r) > 0 then Exit;
+    if Pos('.', l) > 0 then Exit; // `192.0.2.1::` : la v4 n'est valide qu'en fin
     if not ParseGroups(l, wl, nl) then Exit;
     if not ParseGroups(r, wr, nr) then Exit;
     if nl + nr > 7 then Exit;        // '::' doit compresser au moins un groupe

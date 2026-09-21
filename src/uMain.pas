@@ -15,7 +15,7 @@ uses
   uInstance;
 
 const
-  RT_VERSION = '1.7';
+  RT_VERSION = '1.8';
 
 type
   TPaneUI = record

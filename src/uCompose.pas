@@ -244,10 +244,12 @@ begin
           end
         else if env.Kind = ykMap then
           for j := 0 to High(env.Keys) do
-            if env.Vals[j].Kind = ykScalar then
-              AddEnv(sl, env.Keys[j], env.Vals[j].Scalar, True)
+            if env.Vals[j].Kind <> ykScalar then
+              sl.Add('# skipped ' + env.Keys[j] + ': nested value')
+            else if env.Vals[j].IsNull then
+              AddEnv(sl, env.Keys[j], '', False) // `KEY:` = passe l'env de l'hote, comme `- KEY`
             else
-              AddEnv(sl, env.Keys[j], '', True);
+              AddEnv(sl, env.Keys[j], env.Vals[j].Scalar, True);
         sl.Add('');
       end;
       if sl.Count = 0 then sl.Add('# no environment: found in any service');

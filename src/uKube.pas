@@ -100,27 +100,35 @@ end;
 function SecretEncode(const AName, ANamespace: string; AEnv: TStrings): string;
 var
   res: TStringList;
-  i, eq: Integer;
-  ln, key, val: string;
+  i: Integer;
+  key, val: string;
+  exp: Boolean;
+  kind: TEnvKind;
 begin
   res := TStringList.Create;
+  res.TextLineBreakStyle := tlbsLF;
   try
     res.Add('apiVersion: v1');
     res.Add('kind: Secret');
     EmitMeta(res, AName, ANamespace, 'my-secret');
     res.Add('type: Opaque');
     res.Add('data:');
-    for i := 0 to AEnv.Count - 1 do
+    i := 0;
+    while i < AEnv.Count do
     begin
-      ln := AEnv[i];
-      if (Trim(ln) = '') or (Trim(ln)[1] = '#') then Continue;
-      if Copy(TrimLeft(ln), 1, 7) = 'export ' then
-        ln := Copy(TrimLeft(ln), 8, MaxInt);
-      eq := Pos('=', ln);
-      if eq = 0 then Continue;
-      key := Trim(Copy(ln, 1, eq - 1));
-      val := EnvDecodeValue(Trim(EnvStripComment(Copy(ln, eq + 1, MaxInt))));
-      if not ValidSecretKey(key) then Continue;
+      Inc(i, EnvEntryAt(AEnv, i, key, val, exp, kind));
+      if kind = ekOther then
+      begin
+        res.Add('  # skipped (not KEY=value): ' + Copy(Trim(AEnv[i - 1]), 1, 80));
+        Continue;
+      end;
+      if kind <> ekEntry then Continue;
+      val := EnvDecodeValue(Trim(val));
+      if not ValidSecretKey(key) then
+      begin
+        res.Add('  # skipped invalid key: ' + key);
+        Continue;
+      end;
       res.Add('  ' + key + ': ' + B64Encode(val));
     end;
     Result := res.Text;
@@ -213,8 +221,10 @@ end;
 function ConfigMapEncode(const AName, ANamespace: string; AEnv: TStrings): string;
 var
   res: TStringList;
-  i, eq: Integer;
-  ln, key, val: string;
+  i: Integer;
+  key, val: string;
+  exp: Boolean;
+  kind: TEnvKind;
 begin
   res := TStringList.Create;
   res.TextLineBreakStyle := tlbsLF;
@@ -223,17 +233,24 @@ begin
     res.Add('kind: ConfigMap');
     EmitMeta(res, AName, ANamespace, 'my-configmap');
     res.Add('data:');
-    for i := 0 to AEnv.Count - 1 do
+    i := 0;
+    while i < AEnv.Count do
     begin
-      ln := AEnv[i];
-      if (Trim(ln) = '') or (Trim(ln)[1] = '#') then Continue;
-      if Copy(TrimLeft(ln), 1, 7) = 'export ' then
-        ln := Copy(TrimLeft(ln), 8, MaxInt);
-      eq := Pos('=', ln);
-      if eq = 0 then Continue;
-      key := Trim(Copy(ln, 1, eq - 1));
-      val := EnvDecodeValue(Trim(Copy(ln, eq + 1, MaxInt)));
-      if not ValidSecretKey(key) then Continue;
+      // meme lecteur que les autres outils .env : commentaire de fin coupe,
+      // valeur citee multi-ligne rassemblee
+      Inc(i, EnvEntryAt(AEnv, i, key, val, exp, kind));
+      if kind = ekOther then
+      begin
+        res.Add('  # skipped (not KEY=value): ' + Copy(Trim(AEnv[i - 1]), 1, 80));
+        Continue;
+      end;
+      if kind <> ekEntry then Continue;
+      val := EnvDecodeValue(Trim(val));
+      if not ValidSecretKey(key) then
+      begin
+        res.Add('  # skipped invalid key: ' + key);
+        Continue;
+      end;
       // quote YAML sinon true/123 cesseraient d'etre des strings ;
       // multi-ligne en bloc | (script, PEM) plutot qu'une ligne d'echappes
       YamlEmitScalar(res, '  ' + key + ': ', val, 2);

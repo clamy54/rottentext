@@ -10,7 +10,7 @@ unit uLogTools;
 interface
 
 uses
-  Classes, SysUtils, DateUtils;
+  Classes, SysUtils, DateUtils, uTz;
 
 function FindLineStamp(const ALine: string; out APos, ALen: Integer;
   out AUtc: TDateTime): Boolean;
@@ -53,15 +53,14 @@ end;
 
 function IsoLocal(UTC: TDateTime): string;
 var
-  bias, disp: Integer;
+  disp: Integer;
   sign: Char;
   loc: TDateTime;
   fmt: string;
 begin
-  bias := GetLocalTimeOffset; // minutes : UTC = local + bias
-  disp := -bias;
+  disp := LocalOffsetAt(UTC); // decalage A CETTE DATE (ete/hiver)
   if disp >= 0 then sign := '+' else sign := '-';
-  loc := UniversalTimeToLocal(UTC);
+  loc := UtcToLocalAt(UTC);
   // le parseur lit les ms : les jeter rendrait .123 et .987 indiscernables
   if MilliSecondOf(loc) <> 0 then fmt := 'yyyy-mm-dd"T"hh:nn:ss.zzz'
   else fmt := 'yyyy-mm-dd"T"hh:nn:ss';
@@ -152,7 +151,7 @@ begin
     else AUtc := dt - zsign * (zh * 60 + zm) / (24 * 60);
   end
   else
-    AUtc := LocalTimeToUniversal(dt);
+    AUtc := LocalToUtcAt(dt);
   ALen := j - i;
   Result := True;
 end;
@@ -193,7 +192,7 @@ begin
   if (hasZone and ((zh > 23) or (zm > 59))) or
      not TryEncodeDateTime(y, mo, d, hh, nn, ss, 0, dt) then Exit;
   if hasZone then AUtc := dt - zsign * (zh * 60 + zm) / (24 * 60)
-  else AUtc := LocalTimeToUniversal(dt);
+  else AUtc := LocalToUtcAt(dt);
   ALen := j - i;
   Result := True;
 end;
@@ -227,7 +226,7 @@ begin
   hh := NumAt(S, j + 1, 2); nn := NumAt(S, j + 4, 2); ss := NumAt(S, j + 7, 2);
   y := YearOf(Now); // RFC3164 : pas d'annee dans le format
   if not TryEncodeDateTime(y, mo, d, hh, nn, ss, 0, dt) then Exit;
-  AUtc := LocalTimeToUniversal(dt);
+  AUtc := LocalToUtcAt(dt);
   ALen := (j + 9) - i;
   Result := True;
 end;
@@ -239,7 +238,9 @@ var
   v: Int64;
 begin
   Result := False;
-  if not (IsDig(S[i]) and ((i = 1) or not IsAlnumC(S[i - 1]))) then Exit;
+  // `.` ou `-` devant : 1.1700000000 n'est pas un epoch, -1700000000 non plus
+  if not (IsDig(S[i]) and ((i = 1) or (not IsAlnumC(S[i - 1]) and
+     not (S[i - 1] in ['.', '-'])))) then Exit;
   j := i;
   while (j <= Length(S)) and IsDig(S[j]) do Inc(j);
   len := j - i;

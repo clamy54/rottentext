@@ -511,7 +511,10 @@ begin
   // ecrire la CIBLE du lien, pas l'entree du lien: un rename remplacerait le
   // symlink lui-meme (la vue texte fait deja ca)
   dest := ResolveLink(AFileName);
-  if SameFileName(dest, FFileName) then
+  // supprime sous nos pieds : l'ecriture sur place n'ouvrirait rien (et sans
+  // edit elle sortait en silence, onglet marque sauve). Le temp + rename
+  // recopie depuis notre handle encore ouvert.
+  if SameFileName(dest, FFileName) and FileExists(FFileName) then
   begin
     SaveInPlace;
     Exit;

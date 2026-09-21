@@ -173,7 +173,7 @@ begin
     end
     // une quote n'ouvre qu'en tete de scalaire : don't panic # note
     else if ((S[i] = '"') or (S[i] = '''')) and
-            ((i = 1) or (S[i - 1] in [' ', #9, '-', '['])) then
+            ((i = 1) or (S[i - 1] in [' ', #9, '-', '[', ',', '{'])) then
       q := S[i]
     else if (S[i] = '#') and ((i = 1) or (S[i - 1] = ' ') or (S[i - 1] = #9)) then
     begin
@@ -189,7 +189,7 @@ procedure Preprocess(const AText: string; out L: TYLines);
 var
   raw: TStringList;
   i, j, ind: Integer;
-  ln, body: string;
+  ln, body, sep: string;
 begin
   raw := TStringList.Create;
   try
@@ -216,9 +216,15 @@ begin
       L[i].Indent := ind;
       L[i].Content := body;
       L[i].Empty := Trim(body) = '';
-      L[i].DocEnd := TrimRight(body) = '...';
-      L[i].DocSep := L[i].DocEnd or (TrimRight(body) = '---');
-      L[i].Blank := L[i].Empty or ((not L[i].DocSep) and (body[1] = '#'));
+      // bornes de document en colonne 0 seulement (un `---` indente dans un
+      // bloc | est du contenu), `--- # nom` accepte
+      sep := TrimRight(StripComment(body));
+      L[i].DocEnd := (ind = 0) and (sep = '...') and (body[1] = '.');
+      L[i].DocSep := L[i].DocEnd or
+        ((ind = 0) and (sep = '---') and (body[1] = '-'));
+      L[i].Blank := L[i].Empty or ((not L[i].DocSep) and (body[1] = '#')) or
+        // directive %YAML / %TAG : pas de contenu
+        ((ind = 0) and (body[1] = '%'));
     end;
   finally
     raw.Free;
@@ -299,7 +305,18 @@ begin
             'r': Result := Result + #13;
             '"': Result := Result + '"';
             '\': Result := Result + '\';
+            '/': Result := Result + '/';
+            ' ': Result := Result + ' ';
             '0': Result := Result + #0;
+            'a': Result := Result + #7;
+            'b': Result := Result + #8;
+            'v': Result := Result + #11;
+            'f': Result := Result + #12;
+            'e': Result := Result + #27;
+            'N': Result := Result + #$C2#$85;      // U+0085
+            '_': Result := Result + #$C2#$A0;      // U+00A0
+            'L': Result := Result + #$E2#$80#$A8;  // U+2028
+            'P': Result := Result + #$E2#$80#$A9;  // U+2029
             'x', 'u', 'U':
               begin
                 case t[i] of
@@ -307,10 +324,13 @@ begin
                   'u': h := HexEscape(t, i, 4);
                   else h := HexEscape(t, i, 8);
                 end;
-                if h = '' then Result := Result + '\' + t[i]
-                else Result := Result + h;
+                if h = '' then
+                  raise EYamlError.CreateFmt('bad escape in %s', [t]);
+                Result := Result + h;
               end;
-            else Result := Result + t[i];
+            else
+              // `\q` n'existe pas : le rendre comme `q` changerait le texte
+              raise EYamlError.CreateFmt('unknown escape \%s in %s', [t[i], t]);
           end;
         end
         else
@@ -320,6 +340,9 @@ begin
       Exit;
     end;
   end;
+  // `"abc` accepte tel quel passerait la quote dans la valeur
+  if (t <> '') and (t[1] in ['"', '''']) then
+    raise EYamlError.CreateFmt('unterminated quoted scalar: %s', [t]);
   Result := t;
 end;
 
@@ -342,11 +365,11 @@ begin
       else if S[i] = q then q := #0;
     end
     else if ((S[i] = '"') or (S[i] = '''')) and
-            ((i = 1) or (S[i - 1] in [' ', #9, '-', '['])) then
+            ((i = 1) or (S[i - 1] in [' ', #9, '-', '[', ',', '{'])) then
       q := S[i]
     else if S[i] = ':' then
     begin
-      if (i = Length(S)) or (S[i + 1] = ' ') then Exit(i);
+      if (i = Length(S)) or (S[i + 1] in [' ', #9]) then Exit(i);
     end;
     Inc(i);
   end;
@@ -354,23 +377,29 @@ end;
 
 function IsListLine(const S: string): Boolean;
 begin
-  Result := (S = '-') or ((Length(S) >= 2) and (S[1] = '-') and (S[2] = ' '));
+  Result := (S = '-') or ((Length(S) >= 2) and (S[1] = '-') and (S[2] in [' ', #9]));
 end;
 
-function BlockScalarChar(const S: string; out AChomp: Char): Char;
+// AIndent = indicateur d'indentation explicite (`|2`), 0 = auto
+function BlockScalarChar(const S: string; out AChomp: Char;
+  out AIndent: Integer): Char;
 var
   t: string;
   i: Integer;
 begin
   Result := #0;
   AChomp := #0;
+  AIndent := 0;
   t := Trim(S);
-  if (t = '') or ((t[1] <> '|') and (t[1] <> '>')) then Exit;
+  if (t = '') or (Length(t) > 3) or ((t[1] <> '|') and (t[1] <> '>')) then Exit;
   for i := 2 to Length(t) do
-    if not (t[i] in ['+', '-', '0'..'9']) then Exit;
+    if not (t[i] in ['+', '-', '1'..'9']) then Exit;
+  // `|-+` ou `|24` ne sont pas des en-tetes
+  if (Length(t) = 3) and ((t[2] in ['+', '-']) = (t[3] in ['+', '-'])) then Exit;
   Result := t[1];
   for i := 2 to Length(t) do
-    if (t[i] = '+') or (t[i] = '-') then AChomp := t[i];
+    if (t[i] = '+') or (t[i] = '-') then AChomp := t[i]
+    else AIndent := Ord(t[i]) - Ord('0');
 end;
 
 type
@@ -381,8 +410,9 @@ type
     procedure CheckTab(idx: Integer);
     function PlainContinuation(var idx: Integer; blockIndent: Integer;
       const AFirst: string): string;
+    // AFirst = colonne du contenu imposee par `|N` (-1 = celle de la 1re ligne)
     function ParseBlockScalar(var idx: Integer; blockIndent: Integer;
-      kindCh, chomp: Char): string;
+      kindCh, chomp: Char; AFirst: Integer): string;
     function ParseNode(var idx: Integer; minIndent, depth: Integer): TYamlNode;
   end;
 
@@ -419,7 +449,7 @@ begin
 end;
 
 function TYamlParser.ParseBlockScalar(var idx: Integer; blockIndent: Integer;
-  kindCh, chomp: Char): string;
+  kindCh, chomp: Char; AFirst: Integer): string;
 var
   first, rel, trail: Integer;
   parts: TStringList;
@@ -429,12 +459,19 @@ var
 begin
   parts := TStringList.Create;
   try
-    first := -1;
+    // `|2` : les espaces au-dela de la colonne imposee sont du contenu
+    first := AFirst;
     while idx < N do
     begin
+      // `---` en colonne 0 ferme le document, meme sous un bloc racine
+      if L[idx].DocSep then Break;
       if L[idx].Empty then
       begin
-        parts.Add('');
+        // une ligne de seuls espaces plus profonde que le bloc en fait partie
+        if (first >= 0) and (L[idx].Indent > first) then
+          parts.Add(StringOfChar(' ', L[idx].Indent - first))
+        else
+          parts.Add('');
         Inc(idx);
         Continue;
       end;
@@ -495,7 +532,9 @@ begin
         sb.Append(#10);
         if chomp = '+' then
           for i := 1 to trail do sb.Append(#10);
-      end;
+      end
+      else if (parts.Count = 0) and (chomp = '+') then
+        for i := 1 to trail do sb.Append(#10); // `|+` sur des lignes vides
       Result := sb.ToString;
     finally
       sb.Free;
@@ -507,10 +546,16 @@ end;
 
 function TYamlParser.ParseNode(var idx: Integer; minIndent, depth: Integer): TYamlNode;
 var
-  blockIndent, colon: Integer;
+  blockIndent, colon, bind: Integer;
   c, key, keyRaw, rest, anch: string;
   kindCh, chomp: Char;
   itemNode, child: TYamlNode;
+
+  function FirstCol(AParent: Integer): Integer;
+  begin
+    if bind > 0 then Result := AParent + bind else Result := -1;
+  end;
+
 begin
   Result := nil;
   if depth > YAML_MAX_DEPTH then
@@ -552,10 +597,13 @@ begin
           child.Anchor := anch;
           Result.PushItem(child);
         end
-        else if MapColon(rest) > 0 then
+        else if (IsListLine(rest) or (MapColon(rest) > 0)) and
+                not (rest[1] in ['{', '[']) then
         begin
-          // map compacte `- key: v` : reecrite en `key: v` a l'indent REEL du
-          // contenu (`-   key:` ou `- &a key:` = les freres ne sont pas a +2)
+          // map compacte `- key: v` ou liste imbriquee `- - a` : reecrite a
+          // l'indent REEL du contenu (`-   key:` ou `- &a key:` = les freres
+          // ne sont pas a +2). Un flow `{a: 1}` reste un texte, comme sous
+          // une cle : le couper au `:` donnait la cle `{a`
           colon := blockIndent + Length(c) - Length(rest);
           L[idx].Content := rest;
           L[idx].Indent := colon;
@@ -566,13 +614,13 @@ begin
         end
         else
         begin
-          kindCh := BlockScalarChar(rest, chomp);
+          kindCh := BlockScalarChar(rest, chomp, bind);
           if kindCh <> #0 then
           begin
             Inc(idx);
             itemNode := TYamlNode.Create(ykScalar);
             itemNode.Anchor := anch;
-            itemNode.Scalar := ParseBlockScalar(idx, blockIndent, kindCh, chomp);
+            itemNode.Scalar := ParseBlockScalar(idx, blockIndent, kindCh, chomp, FirstCol(blockIndent));
             Result.PushItem(itemNode);
           end
           else
@@ -619,6 +667,11 @@ begin
         if colon = 0 then Break;
         keyRaw := Trim(Copy(c, 1, colon - 1));
         key := Unquote(keyRaw);
+        // SetPair ecraserait la premiere en silence : Sort keys rendrait un
+        // fichier ampute d'une entree
+        if Result.ChildByKey(key) <> nil then
+          raise EYamlError.CreateFmt('duplicate key "%s" at line %d',
+            [key, L[idx].LineNo]);
         rest := SplitAnchor(Trim(Copy(c, colon + 1, MaxInt)), anch);
 
         if rest = '' then
@@ -635,13 +688,13 @@ begin
         end
         else
         begin
-          kindCh := BlockScalarChar(rest, chomp);
+          kindCh := BlockScalarChar(rest, chomp, bind);
           if kindCh <> #0 then
           begin
             Inc(idx);
             child := TYamlNode.Create(ykScalar);
             child.Anchor := anch;
-            child.Scalar := ParseBlockScalar(idx, blockIndent, kindCh, chomp);
+            child.Scalar := ParseBlockScalar(idx, blockIndent, kindCh, chomp, FirstCol(blockIndent));
             Result.SetPair(key, child, keyRaw);
           end
           else
@@ -671,11 +724,11 @@ begin
   end;
 
   Result := TYamlNode.Create(ykScalar);
-  kindCh := BlockScalarChar(c, chomp);
+  kindCh := BlockScalarChar(c, chomp, bind);
   if kindCh <> #0 then
   begin
     Inc(idx);
-    Result.Scalar := ParseBlockScalar(idx, blockIndent - 1, kindCh, chomp);
+    Result.Scalar := ParseBlockScalar(idx, blockIndent - 1, kindCh, chomp, FirstCol(blockIndent - 1));
     Exit;
   end;
   Inc(idx);
@@ -967,6 +1020,7 @@ begin
   // dates -> quote systematique, un go-yaml les typerait
   if S[1] in ['0'..'9', '.', '+'] then Exit(True);
   if (Pos(': ', S) > 0) or (Pos(' #', S) > 0) then Exit(True);
+  if S[Length(S)] = ':' then Exit(True); // `abc:` nu = cle sans valeur
   if (Pos(#10, S) > 0) or (Pos(#13, S) > 0) or (Pos(#9, S) > 0) then Exit(True);
   low := LowerCase(S);
   if (low = 'true') or (low = 'false') or (low = 'null') or (low = '~') or
@@ -1000,6 +1054,7 @@ var
   i, n, k: Integer;
   body, pad, hdr: string;
   lines: TStringList;
+  lead: Boolean;
 begin
   // bloc litteral seulement si le texte s'y prete : \n present, pas de \r,
   // premiere ligne non vide sans espace de tete (l'indentation est deduite
@@ -1010,15 +1065,20 @@ begin
   body := Copy(S, 1, i);
   k := 1;
   while (k <= Length(body)) and (body[k] = #10) do Inc(k);
-  if (Pos(#10, S) = 0) or (Pos(#13, S) > 0) or (body = '') or (body[k] = ' ') then
+  // espaces de tete : `|2` fixe la colonne du contenu (pas en racine, ou la
+  // reference est n = -1 et l'indicateur vaudrait autre chose)
+  lead := (body <> '') and (body[k] = ' ');
+  if (Pos(#10, S) = 0) or (Pos(#13, S) > 0) or (body = '') or
+     (lead and (Trim(APrefix) = '')) then
   begin
     ASL.Add(APrefix + QuoteScalar(S));
     Exit;
   end;
+  if lead then hdr := '|2' else hdr := '|';
   case n of
-    0: hdr := '|-';
-    1: hdr := '|';
-    else hdr := '|+';
+    0: hdr := hdr + '-';
+    1: ;
+    else hdr := hdr + '+';
   end;
   ASL.Add(TrimRight(APrefix) + ' ' + hdr);
   pad := StringOfChar(' ', AIndent + 2);
@@ -1246,7 +1306,9 @@ begin
         else if ANode.Raw = '' then tag := 's'   // bloc | ou > : toujours texte
         else if ANode.Raw[1] in ['"', ''''] then tag := 's'
         else tag := PlainTag(ANode.Raw);
-        AVals.Add(tag + #1 + ANode.Scalar);
+        // `k:`, `k: ~` et `k: null` : un seul null, sinon `null => null`
+        if tag = 'z' then AVals.Add('z'#1)
+        else AVals.Add(tag + #1 + ANode.Scalar);
       end;
     ykMap:
       if ANode.Count = 0 then

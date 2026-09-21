@@ -5,17 +5,34 @@ unit uEditorView;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, Graphics, StdCtrls,
+  Classes, SysUtils, Controls, Forms, Graphics, StdCtrls, Clipbrd, LCLType,
   SynEdit, SynEditTypes, SynEditKeyCmds, SynEditMiscProcs, uWrapView,
   SynGutterLineNumber, SynEditPointClasses, SynPluginMultiCaret, uTheme;
+
+// X11: SynEdit prend PRIMARY des qu'une selection existe, le clic milieu colle
+// partout et Ctrl+V n'est pas touche (usage unix). Ailleurs il n'y a que le
+// presse-papiers: on y copie la selection, sur GESTE utilisateur seulement
+// (souris, commande clavier de selection): les outils font SelectAll +
+// SelText pour reecrire le document, ca n'est pas une copie voulue.
+{$IF defined(UNIX) and not defined(DARWIN)}
+  {$DEFINE X11_PRIMARY}
+{$ENDIF}
 
 type
   // sous-classe pour atteindre le caret d'ecran (protected)
   TRTSynEdit = class(TSynEdit)
+  private
+    procedure CmdDone(Sender: TObject; AfterProcessing: Boolean;
+      var Handled: Boolean; var Command: TSynEditorCommand;
+      var AChar: TUTF8Char; Data: Pointer; HandlerData: Pointer);
   protected
     procedure DoEnter; override;
     procedure DoExit; override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
   public
+    procedure HookCopyOnSelect;
+    procedure CopySelection;
     procedure SetupSteadyCaret(AColor: TColor);
     // SynEdit n'a qu'une couleur de selection: on la swappe au focus
     procedure SyncSelectionFocus;
@@ -68,6 +85,7 @@ var
   RTWrapColumn: Integer = 0; // 0 = auto (largeur fenetre, pas de regle)
   RTShowInvisibles: Boolean = False;
   RTMapTabToSpace: Boolean = True; // a decocher pour editer un Makefile
+  RTCopyOnSelect: Boolean = True;  // Windows/macOS: selection -> presse-papiers
 
 implementation
 
@@ -120,6 +138,40 @@ begin
   SetSelectionFocus(False);
 end;
 
+procedure TRTSynEdit.HookCopyOnSelect;
+begin
+  {$IFNDEF X11_PRIMARY}
+  RegisterCommandHandler(@CmdDone, nil, [hcfPostExec]);
+  {$ENDIF}
+end;
+
+procedure TRTSynEdit.CopySelection;
+begin
+  {$IFNDEF X11_PRIMARY}
+  if RTCopyOnSelect and SelAvail then
+    Clipboard.AsText := SelText;
+  {$ENDIF}
+end;
+
+// Shift+fleches, Ctrl+A clavier ou menu: toutes des commandes ecSel*
+procedure TRTSynEdit.CmdDone(Sender: TObject; AfterProcessing: Boolean;
+  var Handled: Boolean; var Command: TSynEditorCommand;
+  var AChar: TUTF8Char; Data: Pointer; HandlerData: Pointer);
+begin
+  if AfterProcessing and (Command >= ecSelectionStart) and
+     (Command <= ecSelectionEnd) then
+    CopySelection;
+end;
+
+// glisser, double/triple clic, Shift+clic: la selection est faite au relachement
+procedure TRTSynEdit.MouseUp(Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if Button = mbLeft then
+    CopySelection;
+end;
+
 procedure TRTSynEdit.SetupSteadyCaret(AColor: TColor);
 begin
   ScreenCaret.ChangePainter(TSynEditScreenCaretPainterInternal);
@@ -162,6 +214,7 @@ begin
     FSyn.Lines.Add('');
 
   FSyn.OnChange := @InternalChange;
+  TRTSynEdit(FSyn).HookCopyOnSelect;
 
   FSyn.Align := alClient;
   AParent.DisableAlign;
@@ -298,6 +351,7 @@ begin
   else
     FSyn.BlockEnd := Point(Length(FSyn.Lines[e.Y - 1]) + 1, e.Y);
   FSyn.CaretXY := FSyn.LogicalToPhysicalPos(FSyn.BlockEnd);
+  TRTSynEdit(FSyn).CopySelection; // geste menu/raccourci, pas un outil
 end;
 
 // 1er appui: le mot sous le caret; suivants: l'occurrence suivante
@@ -310,6 +364,7 @@ begin
     if FSyn.SearchReplace(FSyn.SelText, '', [ssoMatchCase, ssoFindContinue]) = 0 then
       FSyn.SearchReplace(FSyn.SelText, '', [ssoMatchCase, ssoEntireScope]); // wrap
   end;
+  TRTSynEdit(FSyn).CopySelection;
 end;
 
 procedure TEditorView.InternalChange(Sender: TObject);

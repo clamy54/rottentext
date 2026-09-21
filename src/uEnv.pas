@@ -27,6 +27,18 @@ function EnvFromYaml(const AText: string; out AErr: string): string;
 // cle validee + valeur quotee/echappee : le seul emetteur .env anti-injection
 function EmitEnvLine(const AKey, AValue: string): string;
 
+type
+  TEnvKind = (ekBlank, ekComment, ekEntry, ekOther);
+
+// une entree a partir de la ligne AIdx, AVEC ses lignes de continuation
+// (valeur citee ouverte ici, refermee plus bas : PEM, script). Rend le nombre
+// de lignes consommees (>= 1). AVal garde ses quotes, EnvDecodeValue les ote.
+function EnvEntryAt(ALines: TStrings; AIdx: Integer; out AKey, AVal: string;
+  out AExport: Boolean; out AKind: TEnvKind): Integer;
+
+// partage valeur / commentaire de fin (` #` hors quotes, rendu avec son
+// espace de tete, '' si aucun)
+procedure EnvSplitComment(const S: string; out AValue, AComment: string);
 // coupe un commentaire de fin de valeur (` #` hors quotes). Quote non fermee
 // = valeur multi-ligne : rien n'est coupe.
 function EnvStripComment(const S: string): string;
@@ -42,9 +54,6 @@ implementation
 uses
   StrUtils, fpjson, jsonparser, uJsonSafe, uYaml;
 
-type
-  TEnvKind = (ekBlank, ekComment, ekEntry, ekOther);
-
 function ValidEnvKey(const K: string): Boolean;
 var
   i: Integer;
@@ -57,11 +66,12 @@ begin
   Result := True;
 end;
 
-function EnvStripComment(const S: string): string;
+procedure EnvSplitComment(const S: string; out AValue, AComment: string);
 var
   i, st: Integer;
   q: Char;
 begin
+  AComment := '';
   // la citation peut etre precedee d'espaces : `K= "texte # contenu"`
   st := 1;
   while (st <= Length(S)) and (S[st] in [' ', #9]) do Inc(st);
@@ -78,10 +88,21 @@ begin
       else if S[i] = q then q := #0;
     end
     else if (S[i] = '#') and ((i = 1) or (S[i - 1] = ' ') or (S[i - 1] = #9)) then
-      Exit(TrimRight(Copy(S, 1, i - 1)));
+    begin
+      AValue := TrimRight(Copy(S, 1, i - 1));
+      AComment := ' ' + Copy(S, i, MaxInt);
+      Exit;
+    end;
     Inc(i);
   end;
-  Result := TrimRight(S);
+  AValue := TrimRight(S);
+end;
+
+function EnvStripComment(const S: string): string;
+var
+  c: string;
+begin
+  EnvSplitComment(S, Result, c);
 end;
 
 // quote ouverte et jamais refermee : la valeur continue sur les lignes suivantes
@@ -168,6 +189,38 @@ begin
   end;
 end;
 
+function EnvEntryAt(ALines: TStrings; AIdx: Integer; out AKey, AVal: string;
+  out AExport: Boolean; out AKind: TEnvKind): Integer;
+var
+  q: Char;
+  j: Integer;
+  first: string;
+begin
+  Result := 1;
+  AKind := ClassifyEnv(ALines[AIdx], AKey, AVal, AExport);
+  if AKind <> ekEntry then Exit;
+  q := EnvOpenQuote(AVal);
+  if q = #0 then Exit;
+  first := AVal;
+  j := AIdx + 1;
+  while j < ALines.Count do
+  begin
+    AVal := AVal + #10 + ALines[j];
+    Inc(Result);
+    if EnvClosesQuote(ALines[j], q) then
+    begin
+      // refermee : un commentaire apres la quote de fin saute maintenant
+      AVal := EnvStripComment(AVal);
+      Exit;
+    end;
+    Inc(j);
+  end;
+  // jamais refermee : ligne cassee (dotenv la rejette), pas une valeur qui
+  // avalerait le reste du fichier
+  Result := 1;
+  AVal := first;
+end;
+
 function SplitLines(const AText: string): TStringList;
 begin
   Result := TStringList.Create;
@@ -185,8 +238,9 @@ type
 var
   lines, pending, outp: TStringList;
   units: array of TUnit;
-  i, n: Integer;
+  i, j, n, used: Integer;
   key, val: string; exp: Boolean;
+  kind: TEnvKind;
 
   // ordre TOTAL : quicksort deterministe, equivalent-stable
   function UnitLess(const A, B: TUnit): Boolean;
@@ -237,8 +291,11 @@ begin
   outp.TextLineBreakStyle := tlbsLF;
   units := nil;
   try
-    for i := 0 to lines.Count - 1 do
-      if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
+    i := 0;
+    while i < lines.Count do
+    begin
+      used := EnvEntryAt(lines, i, key, val, exp, kind);
+      if kind = ekEntry then
       begin
         n := Length(units);
         SetLength(units, n + 1);
@@ -247,11 +304,16 @@ begin
         units[n].Block := TStringList.Create;
         units[n].Block.TextLineBreakStyle := tlbsLF;
         units[n].Block.AddStrings(pending);
-        units[n].Block.Add(lines[i]);
+        // une valeur multi-ligne voyage avec sa cle, sinon le tri eparpille
+        // le corps d'un PEM entre les autres entrees
+        for j := 0 to used - 1 do
+          units[n].Block.Add(lines[i + j]);
         pending.Clear;
       end
       else
         pending.Add(lines[i]);
+      Inc(i, used);
+    end;
 
     if Length(units) > 1 then
       QSort(0, High(units));
@@ -274,8 +336,9 @@ end;
 function EnvFindDuplicates(const AText: string): string;
 var
   lines, keys, lineNos, outp: TStringList;
-  i, k, cnt: Integer;
+  i, k, cnt, used: Integer;
   key, val, upk: string; exp: Boolean;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   keys := TStringList.Create;
@@ -284,8 +347,11 @@ begin
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
   try
-    for i := 0 to lines.Count - 1 do
-      if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
+    i := 0;
+    while i < lines.Count do
+    begin
+      used := EnvEntryAt(lines, i, key, val, exp, kind);
+      if kind = ekEntry then
       begin
         upk := UpperCase(key);
         k := lineNos.IndexOfName(upk);
@@ -297,6 +363,8 @@ begin
         else
           lineNos.ValueFromIndex[k] := lineNos.ValueFromIndex[k] + ' ' + IntToStr(i + 1);
       end;
+      Inc(i, used); // le corps d'une valeur multi-ligne n'est pas une cle
+    end;
 
     outp.Add('# .env duplicate keys (dotenv: last one wins)');
     cnt := 0;
@@ -386,34 +454,32 @@ end;
 function EnvRedact(const AText: string): string;
 var
   lines, outp: TStringList;
-  i: Integer;
-  key, val, ln: string;
+  i, j, used: Integer;
+  key, val: string;
   exp, changed: Boolean;
-  swallow: Char;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
   try
-    swallow := #0;
-    for i := 0 to lines.Count - 1 do
+    i := 0;
+    while i < lines.Count do
     begin
-      ln := lines[i];
-      // corps d'un secret multi-ligne (PEM) deja masque : jamais recopie
-      if swallow <> #0 then
+      used := EnvEntryAt(lines, i, key, val, exp, kind);
+      if (kind = ekEntry) and LooksSecret(key) then
       begin
-        if EnvClosesQuote(ln, swallow) then swallow := #0;
-        Continue;
-      end;
-      if (ClassifyEnv(ln, key, val, exp) = ekEntry) and LooksSecret(key) then
-      begin
+        // le corps d'un secret multi-ligne (PEM) n'est jamais recopie ; une
+        // quote jamais refermee compte pour une ligne, le reste du fichier
+        // n'est pas avale
         if exp then outp.Add('export ' + key + '=****')
         else outp.Add(key + '=****');
-        swallow := EnvOpenQuote(Trim(val));
       end
       else
         // verbatim, mais une URL a creds fuiterait : scrubee meme en commentaire
-        outp.Add(RedactUrlCreds(ln, changed));
+        for j := 0 to used - 1 do
+          outp.Add(RedactUrlCreds(lines[i + j], changed));
+      Inc(i, used);
     end;
     Result := outp.Text;
   finally
@@ -427,19 +493,22 @@ var
   obj: TJSONObject;
   i, k: Integer;
   key, val: string; exp: Boolean;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   obj := TJSONObject.Create;
   try
-    for i := 0 to lines.Count - 1 do
-      if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
-      begin
-        val := EnvDecodeValue(Trim(val));
-        // dotenv : dernier gagne
-        k := obj.IndexOfName(key);
-        if k >= 0 then obj.Delete(k);
-        obj.Add(key, val); // toujours une chaine : .env n'a pas de types
-      end;
+    i := 0;
+    while i < lines.Count do
+    begin
+      Inc(i, EnvEntryAt(lines, i, key, val, exp, kind));
+      if kind <> ekEntry then Continue;
+      val := EnvDecodeValue(Trim(val));
+      // dotenv : dernier gagne
+      k := obj.IndexOfName(key);
+      if k >= 0 then obj.Delete(k);
+      obj.Add(key, val); // toujours une chaine : .env n'a pas de types
+    end;
     Result := obj.FormatJSON;
   finally
     obj.Free;
@@ -484,7 +553,7 @@ var
 begin
   k := Trim(AKey);
   if not ValidEnvKey(k) then
-    Exit('# skipped invalid key: ' + OneLine(AKey));
+    Exit('# skipped invalid key: ' + OneLine(AKey + '=' + AValue));
   if NeedsEnvQuote(AValue) then
     Result := k + '=' + EnvQuote(AValue)
   else
@@ -556,29 +625,34 @@ end;
 function EnvQuoteValues(const AText: string): string;
 var
   lines, outp: TStringList;
-  i: Integer;
-  key, val, v, pfx: string;
+  i, j, used: Integer;
+  key, val, v, pfx, cmt: string;
   exp: Boolean;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
   try
-    for i := 0 to lines.Count - 1 do
-      if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
+    i := 0;
+    while i < lines.Count do
+    begin
+      used := EnvEntryAt(lines, i, key, val, exp, kind);
+      v := Trim(val);
+      // re-quoter double-echapperait les \" internes ; une valeur sur
+      // plusieurs lignes est deja quotee par construction
+      if (kind = ekEntry) and (used = 1) and not IsQuoted(v) then
       begin
-        v := Trim(val);
-        // re-quoter double-echapperait les \" internes
-        if IsQuoted(v) then
-          outp.Add(lines[i])
-        else
-        begin
-          if exp then pfx := 'export ' else pfx := '';
-          outp.Add(pfx + key + '=' + EnvQuote(v));
-        end;
+        if exp then pfx := 'export ' else pfx := '';
+        // ClassifyEnv a coupe le ` # note` : le remettre, il appartient a l'utilisateur
+        EnvSplitComment(Copy(lines[i], Pos('=', lines[i]) + 1, MaxInt), v, cmt);
+        outp.Add(pfx + key + '=' + EnvQuote(Trim(v)) + cmt);
       end
       else
-        outp.Add(lines[i]);
+        for j := 0 to used - 1 do
+          outp.Add(lines[i + j]);
+      Inc(i, used);
+    end;
     Result := outp.Text;
   finally
     lines.Free; outp.Free;
@@ -600,29 +674,32 @@ end;
 function EnvUnquoteValues(const AText: string): string;
 var
   lines, outp: TStringList;
-  i: Integer;
-  key, val, v, inner, pfx: string;
+  i, j, used: Integer;
+  key, val, v, inner, pfx, cmt: string;
   exp: Boolean;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
   try
-    for i := 0 to lines.Count - 1 do
-      if ClassifyEnv(lines[i], key, val, exp) = ekEntry then
+    i := 0;
+    while i < lines.Count do
+    begin
+      used := EnvEntryAt(lines, i, key, val, exp, kind);
+      v := Trim(val);
+      inner := Copy(v, 2, Length(v) - 2);
+      if (kind = ekEntry) and (used = 1) and IsQuoted(v) and SafeBare(inner) then
       begin
-        v := Trim(val);
-        inner := Copy(v, 2, Length(v) - 2);
-        if IsQuoted(v) and SafeBare(inner) then
-        begin
-          if exp then pfx := 'export ' else pfx := '';
-          outp.Add(pfx + key + '=' + inner);
-        end
-        else
-          outp.Add(lines[i]);
+        if exp then pfx := 'export ' else pfx := '';
+        EnvSplitComment(Copy(lines[i], Pos('=', lines[i]) + 1, MaxInt), v, cmt);
+        outp.Add(pfx + key + '=' + inner + cmt);
       end
       else
-        outp.Add(lines[i]);
+        for j := 0 to used - 1 do
+          outp.Add(lines[i + j]);
+      Inc(i, used);
+    end;
     Result := outp.Text;
   finally
     lines.Free; outp.Free;
@@ -631,26 +708,47 @@ end;
 
 function EnvToYaml(const AText: string): string;
 var
-  lines, outp: TStringList;
-  i: Integer;
+  lines, outp, last: TStringList;
+  i, st: Integer;
   key, val: string;
   exp: Boolean;
+  kind: TEnvKind;
 begin
   lines := SplitLines(AText);
   outp := TStringList.Create;
   outp.TextLineBreakStyle := tlbsLF;
+  last := TStringList.Create;
+  last.CaseSensitive := True;
   try
-    for i := 0 to lines.Count - 1 do
-      case ClassifyEnv(lines[i], key, val, exp) of
-        ekEntry: YamlEmitScalar(outp, key + ': ', EnvDecodeValue(Trim(val)), 0);
+    // dotenv : dernier gagne. Emettre les deux ferait un YAML a cle en
+    // double, que tout parseur refuse
+    i := 0;
+    while i < lines.Count do
+    begin
+      st := i;
+      Inc(i, EnvEntryAt(lines, i, key, val, exp, kind));
+      if kind = ekEntry then last.Values[key] := IntToStr(st);
+    end;
+    i := 0;
+    while i < lines.Count do
+    begin
+      st := i;
+      Inc(i, EnvEntryAt(lines, i, key, val, exp, kind));
+      case kind of
+        ekEntry:
+          if last.Values[key] = IntToStr(st) then
+            YamlEmitScalar(outp, key + ': ', EnvDecodeValue(Trim(val)), 0)
+          else
+            outp.Add('# duplicate key ' + key + ' (last one wins)');
         ekBlank: outp.Add('');
-        ekComment: outp.Add(lines[i]);
+        ekComment: outp.Add(lines[st]);
       else
-        outp.Add('# skipped (not KEY=value): ' + OneLine(lines[i]));
+        outp.Add('# skipped (not KEY=value): ' + OneLine(lines[st]));
       end;
+    end;
     Result := outp.Text;
   finally
-    lines.Free; outp.Free;
+    lines.Free; outp.Free; last.Free;
   end;
 end;
 

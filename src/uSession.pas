@@ -724,9 +724,11 @@ begin
       // quit (hex, encodage, coloration). Doc pas encore modifie = pas de prompt.
       if S.Entries[i].Hex and not d.IsHex then
         AMgr.ReopenActiveHex;
-      if (S.Entries[i].Path <> '') and not d.IsHex and
+      // texte au dernier quit mais hex a l'ouverture (UTF-16 sans BOM, court):
+      // le reopen avec l'encodage memorise ramene la vue texte
+      if (S.Entries[i].Path <> '') and not S.Entries[i].Hex and
          (S.Entries[i].Enc >= 0) and (S.Entries[i].Enc <= High(Encodings)) and
-         (d.Encoding <> S.Entries[i].Enc) then
+         (d.IsHex or (d.Encoding <> S.Entries[i].Enc)) then
         AMgr.ReopenActiveWithEncoding(S.Entries[i].Enc);
       RestoreCaret(d, S.Entries[i]);
       if not d.IsHex and (S.Entries[i].Syntax <> '') then

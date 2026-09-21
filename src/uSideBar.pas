@@ -284,6 +284,10 @@ begin
   if FRoot.Name = '' then // racine de lecteur (D:\)
     FRoot.Name := ExcludeTrailingPathDelimiter(p);
   FRoot.Path := ExcludeTrailingPathDelimiter(p);
+  // `D:` sans separateur = repertoire COURANT du lecteur : la veille et le
+  // stat portaient sur un autre dossier. Racine Unix : '' apres le strip.
+  if (FRoot.Path = '') or ((Length(FRoot.Path) = 2) and (FRoot.Path[2] = ':')) then
+    FRoot.Path := FRoot.Path + PathDelim;
   FRoot.IsDir := True;
   FRoot.Expanded := True;
   RebuildRows;

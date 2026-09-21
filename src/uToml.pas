@@ -50,7 +50,14 @@ begin
     case AState of
       msBasic:
         begin
-          if (i + 2 <= n) and (L[i] = '"') and (L[i + 1] = '"') and
+          // `\"` n'est pas une fermeture : une quote echappee devant les deux autres
+          if L[i] = '\' then
+          begin
+            Result[i] := ' ';
+            Inc(i);
+            if i <= n then begin Result[i] := ' '; Inc(i); end;
+          end
+          else if (i + 2 <= n) and (L[i] = '"') and (L[i + 1] = '"') and
              (L[i + 2] = '"') then
           begin
             Inc(i, 3);
@@ -421,6 +428,9 @@ begin
   try
     lines.Text := AText;
     ScanToml(AText, scan, trailOpen, badStr);
+    // chaine non fermee : les unites sont fausses, trier deplacerait la
+    // chaine sur une autre ligne. Validate dit ou.
+    if trailOpen or (Length(badStr) > 0) then Exit(AText);
     for i := 0 to High(scan) do
       case scan[i].Kind of
         tkEntry:

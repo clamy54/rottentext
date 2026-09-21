@@ -106,16 +106,28 @@ begin
   Val(S, V, ACode);
 end;
 
-// prefixe 3 lettres insensible a la casse: 'monday' matche 'mon'
+// 'mon' ou 'monday', insensible a la casse. Un simple prefixe acceptait
+// `monkey` comme lundi.
 function NameVal(const S: string; const ANames: array of string;
   ABase: Integer): Integer;
+const
+  FULL: array[0..18] of string = (
+    'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august',
+    'september', 'october', 'november', 'december');
 var
   i: Integer;
-  t: string;
+  t, low: string;
+  ok: Boolean;
 begin
   Result := -1;
   if Length(S) < 3 then Exit;
-  t := LowerCase(Copy(S, 1, 3));
+  low := LowerCase(S);
+  t := Copy(low, 1, 3);
+  ok := low = t;
+  for i := 0 to High(FULL) do
+    if FULL[i] = low then ok := True;
+  if not ok then Exit;
   for i := 0 to High(ANames) do
     if ANames[i] = t then Exit(i + ABase);
 end;

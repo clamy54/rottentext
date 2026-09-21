@@ -183,6 +183,11 @@ begin
   AddItem(nil, m, 'Copy', @A.EditCopy, ShortCut(Word('C'), [ssModifier]));
   AddItem(nil, m, 'Paste', @A.EditPaste, ShortCut(Word('V'), [ssModifier]));
   AddItem(nil, m, 'Paste and Indent', @A.EditPasteIndent, ShortCut(Word('V'), [ssModifier, ssShift]));
+  {$IF not (defined(UNIX) and not defined(DARWIN))}
+  // X11 a deja la selection PRIMARY (clic milieu), rien a regler
+  mi := AddItem(nil, m, 'Copy on Select', @A.EditCopyOnSelect);
+  mi.Checked := RTCopyOnSelect;
+  {$ENDIF}
   AddSep(nil, m);
   sub := AddItem(nil, m, 'Line', nil);
   AddItem(sub, m, 'Indent', @A.EditIndent, ShortCut(VK_OEM_6, [ssModifier]));

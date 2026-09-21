@@ -109,6 +109,11 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
   qu'ouvrir un fichier Unix sous Windows ne transforme pas silencieusement chaque
   fin de ligne en CRLF et ne produise pas un diff de 12 000 changements pour zéro
   changement réel.
+- **Copie à la sélection** : surligner du texte le copie dans le presse-papiers,
+  comme dans un terminal. Sous Windows et macOS c'est *Edit › Copy on Select*
+  (coché par défaut, retenu d'une session à l'autre). Sous Linux/X11 la sélection
+  est le tampon PRIMARY : le clic du milieu la colle n'importe où, et Ctrl+V n'est
+  pas touché.
 - **Tabulations** : *View › Map Tab to Space* (coché par défaut, et retenu d'une
   session à l'autre) fait que la touche Tab insère des espaces jusqu'au prochain
   taquet, pas une tabulation. *Edit › Convert Tabs to Spaces* fait le ménage dans

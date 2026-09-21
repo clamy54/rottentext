@@ -23,6 +23,7 @@ function ClassifyIni(const ALine: string; out AKey, AVal: string): TIniKind;
 var
   t: string;
   eq: Integer;
+  rest: string;
 begin
   AKey := ''; AVal := '';
   t := Trim(ALine);
@@ -30,8 +31,13 @@ begin
   if (t[1] = ';') or (t[1] = '#') then Exit(ikComment);
   if t[1] = '[' then
   begin
-    if (Length(t) < 2) or (t[Length(t)] <> ']') then Exit(ikBad);
-    AKey := Trim(Copy(t, 2, Length(t) - 2));
+    // `[b] ; note` est un en-tete : pris pour ikBad il collait aux cles
+    // suivantes et le tri faisait changer une cle de section
+    eq := Pos(']', t);
+    if eq < 3 then Exit(ikBad);
+    rest := Trim(Copy(t, eq + 1, MaxInt));
+    if (rest <> '') and not (rest[1] in [';', '#']) then Exit(ikBad);
+    AKey := Trim(Copy(t, 2, eq - 2));
     if AKey = '' then Exit(ikBad);
     Exit(ikSection);
   end;

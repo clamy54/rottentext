@@ -101,6 +101,10 @@ The part that opens files. Kept deliberately boring. Highlights:
 - **Line endings** tracked per document and preserved on save, so opening a Unix
   file on Windows does not silently turn every line ending into CRLF and produce a
   diff with 12,000 changes and zero actual changes.
+- **Copy on select**: highlighting text copies it to the clipboard, the way
+  terminals do. On Windows and macOS this is *Edit › Copy on Select* (on by
+  default, remembered across sessions). On Linux/X11 the selection is the
+  PRIMARY buffer: middle-click pastes it anywhere, and Ctrl+V is left alone.
 - **Tabs**: *View › Map Tab to Space* (on by default, and remembered across
   sessions) makes the Tab key insert spaces up to the next tab stop rather than a
   tab character. *Edit › Convert Tabs to Spaces* cleans up an existing file,

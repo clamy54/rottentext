@@ -103,15 +103,17 @@ var
   c5: TSHA512Ctx;
 begin
   case AKind of
+    // sur le TAMPON, comme SHA-2 : MD5String(const S: String) pourrait
+    // transcoder une RawByteString a code page et hacher d'autres octets
     ohMD5:
       begin
-        m := MD5String(S);
+        if S = '' then m := MD5String('') else m := MD5Buffer(PByte(S)^, Length(S));
         SetLength(Result, 16);
         Move(m, Result[1], 16);
       end;
     ohSHA1:
       begin
-        s1 := SHA1String(S);
+        if S = '' then s1 := SHA1String('') else s1 := SHA1Buffer(PByte(S)^, Length(S));
         SetLength(Result, 20);
         Move(s1, Result[1], 20);
       end;
@@ -190,6 +192,7 @@ var
 begin
   if AKind = ohSHA512 then bs := 128 else bs := 64;
   key := AKey;
+  UniqueString(key); // cle de la bonne taille : sinon le FillChar final ne vise qu'une copie
   if Length(key) > bs then key := HashRawS(AKind, key);
   if Length(key) < bs then
   begin
@@ -219,9 +222,32 @@ begin
   Result := EncodeStringBase64(S);
 end;
 
+// mode strict : le decodeur MIME de la RTL SAUTE les octets hors alphabet,
+// `YWJj!!!!` passait pour `abc`. Les blancs (PEM sur 64 colonnes) sont otes avant.
+function B64Strict(const S: string): RawByteString;
+var
+  t: string;
+  i, n: Integer;
+begin
+  SetLength(t, Length(S));
+  n := 0;
+  for i := 1 to Length(S) do
+    if not (S[i] in [' ', #9, #10, #13]) then
+    begin
+      Inc(n);
+      t[n] := S[i];
+    end;
+  SetLength(t, n);
+  try
+    Result := DecodeStringBase64(t, True);
+  except
+    raise EOpsError.Create('Invalid base64 input');
+  end;
+end;
+
 function B64Decode(const S: string): RawByteString;
 begin
-  Result := DecodeStringBase64(S);
+  Result := B64Strict(S);
 end;
 
 function B64UrlEncode(const S: RawByteString): string;
@@ -239,7 +265,7 @@ begin
   t := StringReplace(S, '-', '+', [rfReplaceAll]);
   t := StringReplace(t, '_', '/', [rfReplaceAll]);
   while (Length(t) mod 4) <> 0 do t := t + '=';
-  Result := DecodeStringBase64(t);
+  Result := B64Strict(t);
 end;
 
 function UrlEncode(const S: RawByteString): string;
@@ -336,7 +362,7 @@ begin
     if S[i] = '&' then
     begin
       j := i + 1;
-      while (j <= Length(S)) and (S[j] <> ';') and (j - i <= 10) do Inc(j);
+      while (j <= Length(S)) and (S[j] <> ';') and (j - i <= 12) do Inc(j); // &#x0010FFFF;
       if (j <= Length(S)) and (S[j] = ';') then
       begin
         ent := Copy(S, i + 1, j - i - 1);
@@ -347,7 +373,10 @@ begin
             code := StrToIntDef('$' + Copy(ent, 3, Length(ent)), -1)
           else
             code := StrToIntDef(Copy(ent, 2, Length(ent)), -1);
-          if code >= 0 then
+          // hors plage, surrogate, nul : l'entite reste ecrite telle quelle
+          // plutot qu'un octet invalide ou rien
+          if (code > 0) and (code <= $10FFFF) and
+             ((code < $D800) or (code > $DFFF)) then
           begin
             Result := Result + CodepointToUTF8(code);
             i := j + 1;

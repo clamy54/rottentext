@@ -526,7 +526,14 @@ begin
   Changed;
 end;
 
+// relecture (Revert, fichier change sur disque): garder l'encodage courant,
+// une redetection renverrait un cp1251 choisi a la main en 1252. Seul un BOM
+// apparu entre-temps prime.
 procedure TDocument.Revert;
+var
+  fs: TFileStream;
+  head: string;
+  n, det: Integer;
 begin
   if FUntitled or not FileExists(FFileName) then Exit;
   if IsHex then
@@ -536,9 +543,22 @@ begin
     Modified := False;
     CaptureDiskState;
     Changed;
-  end
+    Exit;
+  end;
+  fs := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
+  try
+    n := 4;
+    if fs.Size < n then n := fs.Size;
+    SetLength(head, n);
+    if n > 0 then fs.ReadBuffer(head[1], n);
+  finally
+    fs.Free;
+  end;
+  det := DetectEncoding(head);
+  if det in [ENC_UTF8_BOM, ENC_UTF16LE_BOM, ENC_UTF16BE_BOM] then
+    LoadFromFileEnc(FFileName, det)
   else
-    LoadFromFile(FFileName);
+    LoadFromFileEnc(FFileName, FEncoding);
 end;
 
 function TDocument.EncodingLossy: Boolean;

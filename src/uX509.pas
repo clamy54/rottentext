@@ -284,6 +284,7 @@ function ParseAsn1Time(const B: TBytes; const T: TTlv): TDateTime;
 var
   s: string;
   y, mo, d, h, mi, se: Integer;
+  i, zm: Integer;
 
   function D2(i: Integer): Integer;
   begin
@@ -313,6 +314,16 @@ begin
     raise EX509Error.Create('unexpected time type');
   if not TryEncodeDateTime(y, mo, d, h, mi, se, 0, Result) then
     raise EX509Error.Create('invalid date in certificate');
+  // `+0500` (pre-RFC 5280) : le decalage etait jete, NotBefore/NotAfter faux
+  // de quelques heures. `Z` = rien a faire.
+  i := Length(s);
+  while (i > 0) and (s[i] in ['0'..'9']) do Dec(i);
+  if (i > 0) and (s[i] in ['+', '-']) and (Length(s) - i = 4) then
+  begin
+    zm := D2(i + 1) * 60 + D2(i + 3);
+    if s[i] = '+' then Result := Result - zm / 1440.0
+    else Result := Result + zm / 1440.0;
+  end;
 end;
 
 procedure ParseSan(const B: TBytes; const TVal: TTlv; var AInfo: TCertInfo);

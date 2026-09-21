@@ -947,12 +947,35 @@ begin
   RecountMatches;
 end;
 
+// meme pliage que SynEditSearch (UTF8LowerCase): SameText est ANSI, ete/ETE
+// avec accents ne matchait pas et Replace sautait l'occurrence trouvee
 function TFindBar.SelMatches(syn: TSynEdit): Boolean;
+
+  function WordCh(const L: string; X: Integer): Boolean;
+  begin
+    Result := (X >= 1) and (X <= Length(L)) and
+      (L[X] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) or
+      ((X >= 1) and (X <= Length(L)) and (L[X] >= #$80));
+  end;
+
+var
+  b, e: TPoint;
 begin
   if FOptCase then
     Result := syn.SelText = FFindEdit.Text
   else
-    Result := SameText(syn.SelText, FFindEdit.Text);
+    Result := UTF8LowerCase(syn.SelText) = UTF8LowerCase(FFindEdit.Text);
+  // mot entier : `cat` selectionne a la main dans `concatenate` ne doit pas
+  // etre remplace, Find ne s'y poserait jamais
+  if Result and FOptWord then
+  begin
+    b := syn.BlockBegin;
+    e := syn.BlockEnd;
+    if (b.Y >= 1) and (b.Y <= syn.Lines.Count) and WordCh(syn.Lines[b.Y - 1], b.X - 1) then
+      Exit(False);
+    if (e.Y >= 1) and (e.Y <= syn.Lines.Count) and WordCh(syn.Lines[e.Y - 1], e.X) then
+      Exit(False);
+  end;
 end;
 
 // LazUTF8 partout: un index d'octet [1] casserait les accents. Chaque branche

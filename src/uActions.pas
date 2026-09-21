@@ -83,6 +83,7 @@ type
     procedure EditCopy(Sender: TObject);
     procedure EditPaste(Sender: TObject);
     procedure EditPasteIndent(Sender: TObject);
+    procedure EditCopyOnSelect(Sender: TObject);
     procedure EditIndent(Sender: TObject);
     procedure EditUnindent(Sender: TObject);
     procedure EditDeleteLine(Sender: TObject);
@@ -295,6 +296,19 @@ begin
     Result := MessageDlg('RottenText',
       Format('That file is %d MB. Load and parse it anyway?', [sz div (1024 * 1024)]),
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes;
+end;
+
+// TStrings.Text finit toujours par un saut : recolle sur le document entier
+// (SelectAll n'inclut pas de saut final) il ajoutait une ligne vide a chaque
+// passage, et coupait la ligne en deux sur une selection
+function FitEol(const ASrc, ARes: string): string;
+begin
+  Result := ARes;
+  if (ASrc <> '') and (ASrc[Length(ASrc)] in [#10, #13]) then Exit;
+  if (Result <> '') and (Result[Length(Result)] = #10) then
+    SetLength(Result, Length(Result) - 1);
+  if (Result <> '') and (Result[Length(Result)] = #13) then
+    SetLength(Result, Length(Result) - 1);
 end;
 
 procedure TAppActions.Cmd(ACmd: TSynEditorCommand);
@@ -545,6 +559,14 @@ end;
 procedure TAppActions.EditIndent(Sender: TObject); begin Cmd(ecBlockIndent); end;
 procedure TAppActions.EditUnindent(Sender: TObject);begin Cmd(ecBlockUnindent); end;
 procedure TAppActions.EditDeleteLine(Sender: TObject);begin Cmd(ecDeleteLine); end;
+
+procedure TAppActions.EditCopyOnSelect(Sender: TObject);
+begin
+  RTCopyOnSelect := not RTCopyOnSelect;
+  if Sender is TMenuItem then
+    TMenuItem(Sender).Checked := RTCopyOnSelect;
+  SettingsSave;
+end;
 
 procedure TAppActions.EditPasteIndent(Sender: TObject);
 var
@@ -1730,11 +1752,11 @@ begin
   end;
   if e.CanFocus then e.SetFocus;
   if onSel then
-    e.SelText := res
+    e.SelText := FitEol(e.SelText, res)
   else
   begin
     e.SelectAll;
-    e.SelText := res;
+    e.SelText := FitEol(e.SelText, res);
   end;
 end;
 
@@ -1775,11 +1797,11 @@ begin
   end;
   if e.CanFocus then e.SetFocus;
   if onSel then
-    e.SelText := res
+    e.SelText := FitEol(e.SelText, res)
   else
   begin
     e.SelectAll;
-    e.SelText := res;
+    e.SelText := FitEol(e.SelText, res);
   end;
 end;
 
@@ -1864,10 +1886,9 @@ begin
               Exit;
             end;
           for i := 0 to High(docs) do YamlSortKeys(docs[i]);
-          src := YamlEmitDocs(docs);
           if e.CanFocus then e.SetFocus;
-          if onSel then e.SelText := src
-          else begin e.SelectAll; e.SelText := src; end;
+          if onSel then e.SelText := FitEol(e.SelText, YamlEmitDocs(docs))
+          else begin e.SelectAll; e.SelText := FitEol(e.SelText, YamlEmitDocs(docs)); end;
         end;
     end;
   finally
@@ -2054,8 +2075,8 @@ begin
   if tag in [0, 5, 6] then
   begin
     if e.CanFocus then e.SetFocus;
-    if onSel then e.SelText := res
-    else begin e.SelectAll; e.SelText := res; end;
+    if onSel then e.SelText := FitEol(e.SelText, res)
+    else begin e.SelectAll; e.SelText := FitEol(e.SelText, res); end;
     Exit;
   end;
 
@@ -2196,8 +2217,8 @@ begin
       begin
         res := IniSortKeys(src);
         if e.CanFocus then e.SetFocus;
-        if onSel then e.SelText := res
-        else begin e.SelectAll; e.SelText := res; end;
+        if onSel then e.SelText := FitEol(e.SelText, res)
+        else begin e.SelectAll; e.SelText := FitEol(e.SelText, res); end;
       end;
   else
     begin
@@ -2236,8 +2257,8 @@ begin
       begin
         res := TomlSortKeys(src);
         if e.CanFocus then e.SetFocus;
-        if onSel then e.SelText := res
-        else begin e.SelectAll; e.SelText := res; end;
+        if onSel then e.SelText := FitEol(e.SelText, res)
+        else begin e.SelectAll; e.SelText := FitEol(e.SelText, res); end;
       end;
   else
     begin

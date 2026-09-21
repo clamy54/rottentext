@@ -125,6 +125,7 @@ begin
           RTWrapColumn := ClampI(JInt(obj, 'wrapColumn', RTWrapColumn), 0, 1000);
           RTShowInvisibles := JBool(obj, 'showInvisibles', RTShowInvisibles);
           RTMapTabToSpace := JBool(obj, 'mapTabToSpace', RTMapTabToSpace);
+          RTCopyOnSelect := JBool(obj, 'copyOnSelect', RTCopyOnSelect);
           SetSideBarVisible := JBool(obj, 'sideBar', False);
           SetWinMax := JBool(obj, 'winMax', False);
           SetWinX := JInt(obj, 'winX', 0);
@@ -166,6 +167,7 @@ begin
       obj.Add('wrapColumn', RTWrapColumn);
       obj.Add('showInvisibles', RTShowInvisibles);
       obj.Add('mapTabToSpace', RTMapTabToSpace);
+      obj.Add('copyOnSelect', RTCopyOnSelect);
       obj.Add('sideBar', SetSideBarVisible);
       if SetWinValid then
       begin

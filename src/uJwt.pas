@@ -29,7 +29,13 @@ begin
   t := StringReplace(t, '_', '/', [rfReplaceAll]);
   pad := Length(t) mod 4;
   if pad > 0 then t := t + StringOfChar('=', 4 - pad);
-  Result := DecodeStringBase64(t);
+  // strict : le mode MIME saute les octets hors alphabet, un segment
+  // abime sortait tronque sans un mot
+  try
+    Result := DecodeStringBase64(t, True);
+  except
+    raise EJwtError.Create('Segment is not valid base64url');
+  end;
 end;
 
 function SafeSegment(const ASeg: string): string;
@@ -87,6 +93,7 @@ end;
 
 function JwtDecode(const AToken: string): string;
 var
+  hdrJson: TJSONData;
   tok, hdr, pl, times: string;
   p1, p2: Integer;
   payload: TJSONData;
@@ -105,6 +112,9 @@ begin
   hdr := Copy(tok, 1, p1 - 1);
   pl := Copy(tok, p1 + 1, p2 - p1 - 1);
   if (hdr = '') or (pl = '') then raise EJwtError.Create('Empty header or payload');
+  // a.b.c.d : un JWE a 5 segments, ce n'est pas un JWS a decoder tel quel
+  if PosEx('.', tok, p2 + 1) > 0 then
+    raise EJwtError.Create('Not a JWS (more than three segments)');
 
   sb := TStringList.Create;
   try
@@ -112,6 +122,18 @@ begin
     sb.Add('');
     sb.Add('--- Header ---');
     sb.Add(PrettyJson(SafeSegment(hdr)));
+    // alg none = jeton non signe : a dire en clair, pas enfoui dans le JSON
+    try
+      hdrJson := SafeGetJSON(SafeSegment(hdr));
+      try
+        if (hdrJson is TJSONObject) and
+           SameText(TJSONObject(hdrJson).Get('alg', ''), 'none') then
+          sb.Add('WARNING: alg is "none" (unsigned token, reject it server-side)');
+      finally
+        hdrJson.Free;
+      end;
+    except
+    end;
     sb.Add('');
     sb.Add('--- Payload ---');
     sb.Add(PrettyJson(SafeSegment(pl)));

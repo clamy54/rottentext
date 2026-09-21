@@ -69,7 +69,9 @@ var
     begin
       eq := Pos('=', tok);
       if eq > 0 then
-        ADest.Add(EmitEnvLine(Copy(tok, 1, eq - 1), Copy(tok, eq + 1, MaxInt)));
+        ADest.Add(EmitEnvLine(Copy(tok, 1, eq - 1), Copy(tok, eq + 1, MaxInt)))
+      else
+        ADest.Add('# skipped (no =): ' + tok);
       tok := '';
     end;
   end;
@@ -219,7 +221,7 @@ function QuadletEnvDotenv(const AText: string; out AErr: string): string;
 var
   lines, sl: TStringList;
   i, before: Integer;
-  sect, key, val: string;
+  sect, key, val, ln: string;
 begin
   Result := '';
   AErr := '';
@@ -230,12 +232,23 @@ begin
     sl.Add('# environment from podman quadlet unit');
     before := sl.Count;
     sect := '';
-    for i := 0 to lines.Count - 1 do
+    i := 0;
+    while i < lines.Count do
     begin
-      if IniSection(lines[i], key) then begin sect := key; Continue; end;
+      ln := lines[i];
+      Inc(i);
+      if IniSection(ln, key) then begin sect := key; Continue; end;
       // Environment= vit dans [Container] (Quadlet) ou [Service] (unite brute)
       if not (SameText(sect, 'Container') or SameText(sect, 'Service')) then Continue;
-      if not IniKV(lines[i], key, val) then Continue;
+      if not IniKV(ln, key, val) then Continue;
+      // `\` en fin de ligne = suite sur la suivante (systemd) ; sans ca la
+      // ligne suivante etait sautee en silence
+      while (TrimRight(val) <> '') and (TrimRight(val)[Length(TrimRight(val))] = '\') and
+            (i < lines.Count) do
+      begin
+        val := Copy(TrimRight(val), 1, Length(TrimRight(val)) - 1) + ' ' + lines[i];
+        Inc(i);
+      end;
       if SameText(key, 'Environment') then
         ParseSystemdEnv(val, sl)
       else if SameText(key, 'EnvironmentFile') then
