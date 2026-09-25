@@ -151,6 +151,10 @@ if TargetOS = &apos;darwin&apos; then
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/uArgon2.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/uStatusBar.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

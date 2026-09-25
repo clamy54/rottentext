@@ -951,11 +951,15 @@ end;
 // avec accents ne matchait pas et Replace sautait l'occurrence trouvee
 function TFindBar.SelMatches(syn: TSynEdit): Boolean;
 
+  // meme jeu que fTSearch (SetHighlighter): IdentChars du highlighter, sinon
+  // IsCharAlphaNumeric. `cat` avant un tiret UTF-8 doit passer des deux cotes
   function WordCh(const L: string; X: Integer): Boolean;
   begin
-    Result := (X >= 1) and (X <= Length(L)) and
-      (L[X] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) or
-      ((X >= 1) and (X <= Length(L)) and (L[X] >= #$80));
+    if (X < 1) or (X > Length(L)) then Exit(False);
+    if syn.Highlighter <> nil then
+      Result := L[X] in syn.Highlighter.IdentChars
+    else
+      Result := IsCharAlphaNumeric(L[X]);
   end;
 
 var

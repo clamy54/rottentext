@@ -183,11 +183,8 @@ begin
   AddItem(nil, m, 'Copy', @A.EditCopy, ShortCut(Word('C'), [ssModifier]));
   AddItem(nil, m, 'Paste', @A.EditPaste, ShortCut(Word('V'), [ssModifier]));
   AddItem(nil, m, 'Paste and Indent', @A.EditPasteIndent, ShortCut(Word('V'), [ssModifier, ssShift]));
-  {$IF not (defined(UNIX) and not defined(DARWIN))}
-  // X11 a deja la selection PRIMARY (clic milieu), rien a regler
   mi := AddItem(nil, m, 'Copy on Select', @A.EditCopyOnSelect);
   mi.Checked := RTCopyOnSelect;
-  {$ENDIF}
   AddSep(nil, m);
   sub := AddItem(nil, m, 'Line', nil);
   AddItem(sub, m, 'Indent', @A.EditIndent, ShortCut(VK_OEM_6, [ssModifier]));
@@ -378,6 +375,9 @@ begin
   mi := AddItem(sub3, m, 'SSHA-512', @A.ToolsLdapPassword); mi.Tag := 2;
   AddSep(sub3, m);
   mi := AddItem(sub3, m, 'CRYPT (bcrypt)', @A.ToolsLdapPassword); mi.Tag := 6;
+  // pw-argon2 : le cout suit la bibliotheque avec laquelle slapd est compile
+  mi := AddItem(sub3, m, 'ARGON2 (slapd + libargon2: t=5, m=7168 KiB)', @A.ToolsLdapPassword); mi.Tag := 8;
+  mi := AddItem(sub3, m, 'ARGON2 (slapd + libsodium: t=2, m=64 MiB)', @A.ToolsLdapPassword); mi.Tag := 9;
   mi := AddItem(sub3, m, 'SHA (unsalted)', @A.ToolsLdapPassword); mi.Tag := 3;
   mi := AddItem(sub3, m, 'SMD5', @A.ToolsLdapPassword); mi.Tag := 4;
   mi := AddItem(sub3, m, 'MD5 (unsalted)', @A.ToolsLdapPassword); mi.Tag := 5;

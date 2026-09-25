@@ -45,9 +45,7 @@ begin
   // l'instance session deja ouverte (nouvel onglet la-bas); accuse recu =
   // rien a faire ici. Pas de reponse sous budget = demarrage normal.
   // Avant toute init LCL: le forward reussi ne paie ni polices ni fenetre.
-  if (ParamCount = 1) and not DirectoryExists(ParamStr(1)) and
-     FileExists(ParamStr(1)) then
-    if ForwardToRunningInstance(ParamStr(1)) then Exit;
+  if ForwardAllToRunningInstance then Exit;
   Application.Scaled := True;
   Application.Initialize;
   LoadEmbeddedFonts;

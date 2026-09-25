@@ -6,14 +6,14 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics, StdCtrls, Clipbrd, LCLType,
-  SynEdit, SynEditTypes, SynEditKeyCmds, SynEditMiscProcs, uWrapView,
+  SynEdit, SynEditTypes, SynEditKeyCmds, SynEditMiscProcs, SynEditMouseCmds, uWrapView,
   SynGutterLineNumber, SynEditPointClasses, SynPluginMultiCaret, uTheme;
 
-// X11: SynEdit prend PRIMARY des qu'une selection existe, le clic milieu colle
-// partout et Ctrl+V n'est pas touche (usage unix). Ailleurs il n'y a que le
-// presse-papiers: on y copie la selection, sur GESTE utilisateur seulement
+// La selection part dans le presse-papiers sur GESTE utilisateur seulement
 // (souris, commande clavier de selection): les outils font SelectAll +
 // SelText pour reecrire le document, ca n'est pas une copie voulue.
+// X11: SynEdit publie aussi PRIMARY, et le clic milieu dans l'editeur colle
+// le presse-papiers (usage terminal) plutot que PRIMARY.
 {$IF defined(UNIX) and not defined(DARWIN)}
   {$DEFINE X11_PRIMARY}
 {$ENDIF}
@@ -28,6 +28,8 @@ type
   protected
     procedure DoEnter; override;
     procedure DoExit; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
   public
@@ -85,7 +87,7 @@ var
   RTWrapColumn: Integer = 0; // 0 = auto (largeur fenetre, pas de regle)
   RTShowInvisibles: Boolean = False;
   RTMapTabToSpace: Boolean = True; // a decocher pour editer un Makefile
-  RTCopyOnSelect: Boolean = True;  // Windows/macOS: selection -> presse-papiers
+  RTCopyOnSelect: Boolean = True;  // selection -> presse-papiers
 
 implementation
 
@@ -139,18 +141,41 @@ begin
 end;
 
 procedure TRTSynEdit.HookCopyOnSelect;
+{$IFDEF X11_PRIMARY}
+var
+  i: Integer;
+{$ENDIF}
 begin
-  {$IFNDEF X11_PRIMARY}
   RegisterCommandHandler(@CmdDone, nil, [hcfPostExec]);
+  {$IFDEF X11_PRIMARY}
+  // clic milieu = presse-papiers (MouseDown), pas PRIMARY: on retire l'action
+  // native, sinon les deux collaient
+  for i := MouseActions.Count - 1 downto 0 do
+    if MouseActions.Items[i].Command = emcPasteSelection then
+      MouseActions.Delete(i);
+  {$ENDIF}
+end;
+
+procedure TRTSynEdit.MouseDown(Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  {$IFDEF X11_PRIMARY}
+  if (Button = mbMiddle) and not ReadOnly and (Clipboard.AsText <> '') then
+  begin
+    if CanFocus then SetFocus;
+    CaretXY := PixelsToRowColumn(Point(X, Y));
+    BlockBegin := LogicalCaretXY;
+    BlockEnd := BlockBegin;
+    PasteFromClipboard;
+  end;
   {$ENDIF}
 end;
 
 procedure TRTSynEdit.CopySelection;
 begin
-  {$IFNDEF X11_PRIMARY}
   if RTCopyOnSelect and SelAvail then
     Clipboard.AsText := SelText;
-  {$ENDIF}
 end;
 
 // Shift+fleches, Ctrl+A clavier ou menu: toutes des commandes ecSel*

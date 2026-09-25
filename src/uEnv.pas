@@ -353,7 +353,7 @@ begin
       used := EnvEntryAt(lines, i, key, val, exp, kind);
       if kind = ekEntry then
       begin
-        upk := UpperCase(key);
+        upk := key; // KEY et key sont deux variables (dotenv, shell)
         k := lineNos.IndexOfName(upk);
         if k < 0 then
         begin
@@ -370,7 +370,7 @@ begin
     cnt := 0;
     for i := 0 to keys.Count - 1 do
     begin
-      k := lineNos.IndexOfName(UpperCase(keys[i]));
+      k := lineNos.IndexOfName(keys[i]);
       if k < 0 then Continue;
       if Pos(' ', lineNos.ValueFromIndex[k]) > 0 then // au moins 2 numeros
       begin

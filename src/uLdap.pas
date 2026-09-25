@@ -9,15 +9,19 @@ interface
 
 type
   // lpsSASL : pas un hash, la valeur est une identite SASL stockee telle quelle
+  // lpsArgon2Lib* : {ARGON2} avec les parametres PAR DEFAUT du module
+  // pw-argon2 d'OpenLDAP selon la bibliotheque de compilation (le hash porte
+  // ses parametres, la verification marche dans les deux cas ; on aligne le
+  // cout sur ce que le serveur produirait lui-meme)
   TLdapPwScheme = (lpsSSHA, lpsSSHA256, lpsSSHA512, lpsSHA, lpsSMD5, lpsMD5,
-    lpsCrypt, lpsSASL);
+    lpsCrypt, lpsSASL, lpsArgon2LibArgon2, lpsArgon2LibSodium);
 
 function LdapUserPassword(AScheme: TLdapPwScheme; const APassword: RawByteString): string;
 
 implementation
 
 uses
-  SysUtils, base64, md5, sha1, uSha2, uBcrypt, uSecRand;
+  SysUtils, base64, md5, sha1, uSha2, uBcrypt, uArgon2, uSecRand;
 
 type
   ELdapError = class(Exception);
@@ -132,6 +136,14 @@ begin
       end;
     lpsSASL:
       Result := '{SASL}' + APassword;
+    // servers/slapd/pwmods/argon2.c : SLAPD_ARGON2_ITERATIONS 5,
+    // SLAPD_ARGON2_MEMORY 7168 (KiB), PARALLELISM 1, SALT 16, HASH 32
+    lpsArgon2LibArgon2:
+      Result := '{ARGON2}' + Argon2idPhc(APassword, RandBytes(16), 5, 7168, 1, 32);
+    // meme fichier, branche libsodium : crypto_pwhash_argon2id_OPSLIMIT_INTERACTIVE
+    // = 2, MEMLIMIT_INTERACTIVE = 64 MiB, SALTBYTES 16, hash 32
+    lpsArgon2LibSodium:
+      Result := '{ARGON2}' + Argon2idPhc(APassword, RandBytes(16), 2, 65536, 1, 32);
   end;
   if salted <> '' then FillChar(salted[1], Length(salted), 0);
 end;

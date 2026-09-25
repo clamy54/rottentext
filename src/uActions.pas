@@ -573,6 +573,12 @@ var
   e: TSynEdit;
   clip, txt: string;
 begin
+  // champ de recherche au focus: coller la, pas dans le document
+  if FocusedEdit <> nil then
+  begin
+    FocusedEdit.PasteFromClipboard;
+    Exit;
+  end;
   e := Ed;
   if e = nil then Exit;
   clip := Clipboard.AsText;
@@ -1022,6 +1028,7 @@ begin
   e.LogicalCaretXY := p2;
   e.BlockBegin := p1;
   e.BlockEnd := p2;
+  if e is TRTSynEdit then TRTSynEdit(e).CopySelection;
 end;
 
 procedure TAppActions.ViewTheme(Sender: TObject);

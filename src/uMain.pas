@@ -15,7 +15,7 @@ uses
   uInstance;
 
 const
-  RT_VERSION = '1.8';
+  RT_VERSION = '1.9';
 
 type
   TPaneUI = record
@@ -266,7 +266,7 @@ begin
   {$ENDIF}
   FActions.SetSideBarChecked(FSideBar.Visible);
   FPanes[0].Tabs.Attach(FMgr, 0);
-  if not ((ParamCount >= 1) and FileExists(ParamStr(1))) then
+  if not HasFileArg then
     FMgr.NewFile;
   if FSessionWin then
   begin
@@ -305,6 +305,7 @@ end;
 procedure TfrmMain.FormShowHandler(Sender: TObject);
 var
   sess: TSession;
+  i: Integer;
 begin
   {$IFDEF DARWIN}{$IF lcl_fullversion >= 4080000}
   // le menu app n'existe qu'une fois le menu principal pose par Cocoa
@@ -321,14 +322,15 @@ begin
       SessionRestoreInto(FMgr, sess);
     end;
   end;
-  // RottenText <fichier|dossier> (le --blank d'une New Window ne matche rien)
+  // RottenText <fichier|dossier>... (le --blank d'une New Window ne matche rien)
   if (ParamCount >= 1) and not FBootShown then
-  begin
-    if DirectoryExists(ParamStr(1)) then
-      HandleOpenFolder(ExpandFileName(ParamStr(1)))
-    else if FileExists(ParamStr(1)) then
-      FMgr.OpenFile(ParamStr(1));
-  end;
+    for i := 1 to ParamCount do
+    begin
+      if DirectoryExists(ParamStr(i)) then
+        HandleOpenFolder(ExpandFileName(ParamStr(i)))
+      else if FileExists(ParamStr(i)) then
+        FMgr.OpenFile(ParamStr(i));
+    end;
   if FMgr.ActiveDoc <> nil then
     FMgr.ActiveDoc.ShowDoc;
   FBootShown := True;

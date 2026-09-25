@@ -30,9 +30,10 @@ uses
   Classes, SysUtils, Controls, StdCtrls, Forms, Dialogs;
 
 const
-  // index combo (1..8) -> schema ; index 0 = aucun mot de passe
-  SchemeMap: array[1..8] of TLdapPwScheme =
-    (lpsSSHA, lpsSSHA256, lpsSSHA512, lpsCrypt, lpsSHA, lpsSMD5, lpsMD5, lpsSASL);
+  // index combo (1..10) -> schema ; index 0 = aucun mot de passe
+  SchemeMap: array[1..10] of TLdapPwScheme =
+    (lpsSSHA, lpsSSHA256, lpsSSHA512, lpsCrypt, lpsArgon2LibArgon2,
+     lpsArgon2LibSodium, lpsSHA, lpsSMD5, lpsMD5, lpsSASL);
 
 type
   TLdifForm = class(TForm)
@@ -149,6 +150,8 @@ begin
     f.cbScheme.Items.Add('SSHA-256');
     f.cbScheme.Items.Add('SSHA-512');
     f.cbScheme.Items.Add('CRYPT');
+    f.cbScheme.Items.Add('ARGON2 (libargon2)');
+    f.cbScheme.Items.Add('ARGON2 (libsodium)');
     f.cbScheme.Items.Add('SHA');
     f.cbScheme.Items.Add('SMD5');
     f.cbScheme.Items.Add('MD5');

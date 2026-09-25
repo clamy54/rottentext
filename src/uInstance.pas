@@ -10,6 +10,10 @@ interface
 
 // True = accuse recu, l'appelant quitte sans ouvrir
 function ForwardToRunningInstance(const APath: string): Boolean;
+// tous les fichiers de la ligne de commande ; True = tous acceptes
+function ForwardAllToRunningInstance: Boolean;
+// au moins un argument est un fichier existant
+function HasFileArg: Boolean;
 
 // False = une autre instance sert deja le canal: chacun sa fenetre
 function InstanceServerStart: Boolean;
@@ -50,6 +54,7 @@ const
 
 var
   FSrv: TSimpleIPCServer = nil;
+  FPending: TStringList = nil; // lot acquitte, servi un chemin par poll
   {$IFDEF WINDOWS}
   FSlot: THandle = 0;       // mutex nomme: notre droit a servir le canal
   FSessSlot: THandle = 0;   // idem pour la session (tenu tout le process)
@@ -133,6 +138,7 @@ end;
 procedure DropServer;
 begin
   FreeAndNil(FSrv);
+  FreeAndNil(FPending);
   ReleaseServerSlot;
 end;
 
@@ -189,7 +195,9 @@ begin
 end;
 {$ENDIF}
 
-function ForwardToRunningInstance(const APath: string): Boolean;
+// AJoined: chemins absolus separes par #2, acquittes en bloc (un accuse partiel
+// ouvrirait les premiers deux fois: la-bas, puis ici avec tout le lot)
+function ForwardJoined(const AJoined: string): Boolean;
 var
   cli: TSimpleIPCClient;
   ack: TSimpleIPCServer;
@@ -197,11 +205,11 @@ var
   t0: QWord;
 begin
   Result := False;
-  if APath = '' then Exit;
+  if AJoined = '' then Exit;
   {$IFDEF UNIX}IgnoreSigPipe;{$ENDIF}
   try
-    full := ExpandFileName(APath);
-    if Length(full) > 4096 then Exit;
+    full := AJoined;
+    if Length(full) > MAX_MSG - 256 then Exit;
     cli := TSimpleIPCClient.Create(nil);
     try
       cli.ServerID := InstanceChannel;
@@ -238,6 +246,41 @@ begin
   except
     Result := False; // canal cabosse = ouverture normale, jamais bloquant
   end;
+end;
+
+function ForwardToRunningInstance(const APath: string): Boolean;
+begin
+  Result := (APath <> '') and (Length(APath) <= 4096) and
+    ForwardJoined(ExpandFileName(APath));
+end;
+
+function HasFileArg: Boolean;
+var
+  i: Integer;
+begin
+  for i := 1 to ParamCount do
+    if not DirectoryExists(ParamStr(i)) and FileExists(ParamStr(i)) then Exit(True);
+  Result := False;
+end;
+
+// un dossier ou un drapeau sur la ligne = fenetre a nous
+function ForwardAllToRunningInstance: Boolean;
+var
+  i: Integer;
+  joined, full: string;
+begin
+  Result := False;
+  if not HasFileArg then Exit;
+  joined := '';
+  for i := 1 to ParamCount do
+  begin
+    if DirectoryExists(ParamStr(i)) or not FileExists(ParamStr(i)) then Exit;
+    full := ExpandFileName(ParamStr(i));
+    if (Length(full) > 4096) or (Pos(#2, full) > 0) then Exit;
+    if joined <> '' then joined := joined + #2;
+    joined := joined + full;
+  end;
+  Result := ForwardJoined(joined);
 end;
 
 function InstanceServerStart: Boolean;
@@ -311,12 +354,19 @@ end;
 
 function InstanceServerPoll(out APath: string): Boolean;
 var
-  s, ackid, tick, p: string;
-  sep, drained: Integer;
+  s, ackid, tick, p, one: string;
+  sep, drained, k: Integer;
+  batch: TStringList;
 begin
   Result := False;
   APath := '';
   if FSrv = nil then Exit;
+  if (FPending <> nil) and (FPending.Count > 0) then
+  begin
+    APath := FPending[0];
+    FPending.Delete(0);
+    Exit(True);
+  end;
   drained := 0;
   try
     while (drained < MAX_DRAIN) and FSrv.PeekMessage(0, True) do
@@ -332,22 +382,38 @@ begin
       sep := Pos(#1, s);
       if sep <= 1 then Continue;
       tick := Copy(s, 1, sep - 1);
-      // chemin en DERNIER champ: un chemin POSIX peut contenir n'importe quoi
+      // chemins en DERNIER champ, separes par #2: un chemin POSIX peut
+      // contenir n'importe quoi d'autre
       p := Copy(s, sep + 1, MaxInt);
       // perime = le client a renonce et ouvert sa fenetre: le servir ouvrirait
       // le fichier une deuxieme fois
       if not MsgFresh(tick) then Continue;
-      // valider PUIS acquitter: l'accuse signifie "je l'ouvre"
-      if (p <> '') and (Length(p) <= 4096) and FileExists(p) and
-         not DirectoryExists(p) then
-      begin
+      // valider PUIS acquitter: l'accuse signifie "je les ouvre"
+      batch := TStringList.Create;
+      try
+        while p <> '' do
+        begin
+          k := Pos(#2, p);
+          if k = 0 then k := Length(p) + 1;
+          one := Copy(p, 1, k - 1);
+          Delete(p, 1, k);
+          if (one <> '') and (Length(one) <= 4096) and FileExists(one) and
+             not DirectoryExists(one) then
+            batch.Add(one);
+        end;
+        if batch.Count = 0 then Continue;
         // le stat a pu durer (volume reseau malade): re-verifier l'age avant
         // d'acquitter, sinon l'accuse part vers un client deja parti
         if not MsgFresh(tick) then Continue;
         SendAck(ackid);
-        APath := p;
-        Exit(True); // un chemin par poll, le timer repassera
+        if FPending = nil then FPending := TStringList.Create;
+        FPending.AddStrings(batch);
+      finally
+        batch.Free;
       end;
+      APath := FPending[0];
+      FPending.Delete(0);
+      Exit(True); // un chemin par poll, le timer repassera
     end;
   except
     // canal HS: on cesse de servir, l'editeur continue

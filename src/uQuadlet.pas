@@ -63,6 +63,86 @@ var
   tok: string;
   inq: Boolean;
 
+  function HexV(c: Char): Integer;
+  begin
+    case c of
+      '0'..'9': Result := Ord(c) - 48;
+      'a'..'f': Result := Ord(c) - 87;
+      'A'..'F': Result := Ord(c) - 55;
+    else Result := -1;
+    end;
+  end;
+
+  // \uXXXX / \UXXXXXXXX -> UTF-8
+  function U8(cp: Cardinal): string;
+  begin
+    if cp < $80 then Result := Chr(cp)
+    else if cp < $800 then
+      Result := Chr($C0 or (cp shr 6)) + Chr($80 or (cp and $3F))
+    else if cp < $10000 then
+      Result := Chr($E0 or (cp shr 12)) + Chr($80 or ((cp shr 6) and $3F)) +
+        Chr($80 or (cp and $3F))
+    else
+      Result := Chr($F0 or (cp shr 18)) + Chr($80 or ((cp shr 12) and $3F)) +
+        Chr($80 or ((cp shr 6) and $3F)) + Chr($80 or (cp and $3F));
+  end;
+
+  // echappes C de systemd.syntax(7) ; inconnu = garde tel quel
+  procedure Escape;
+  var
+    k, v, d: Integer;
+    cp: Cardinal;
+  begin
+    case AVal[i + 1] of
+      'a': tok := tok + #7;
+      'b': tok := tok + #8;
+      'f': tok := tok + #12;
+      'n': tok := tok + #10;
+      'r': tok := tok + #13;
+      't': tok := tok + #9;
+      'v': tok := tok + #11;
+      's': tok := tok + ' ';
+      '\', '"', '''': tok := tok + AVal[i + 1];
+      'x':
+        if (i + 3 <= n) and (HexV(AVal[i + 2]) >= 0) and (HexV(AVal[i + 3]) >= 0) then
+        begin
+          tok := tok + Chr(HexV(AVal[i + 2]) * 16 + HexV(AVal[i + 3]));
+          Inc(i, 2);
+        end
+        else tok := tok + '\x';
+      '0'..'7':
+        if (i + 3 <= n) and (AVal[i + 2] in ['0'..'7']) and (AVal[i + 3] in ['0'..'7']) then
+        begin
+          tok := tok + Chr((Ord(AVal[i + 1]) - 48) * 64 + (Ord(AVal[i + 2]) - 48) * 8 +
+            Ord(AVal[i + 3]) - 48);
+          Inc(i, 2);
+        end
+        else tok := tok + '\' + AVal[i + 1];
+      'u', 'U':
+        begin
+          if AVal[i + 1] = 'u' then k := 4 else k := 8;
+          cp := 0; v := 0;
+          if i + 1 + k <= n then
+            for d := 1 to k do
+            begin
+              v := HexV(AVal[i + 1 + d]);
+              if v < 0 then Break;
+              cp := cp * 16 + Cardinal(v);
+            end;
+          if (i + 1 + k <= n) and (v >= 0) and (cp <= $10FFFF) and
+             not ((cp >= $D800) and (cp <= $DFFF)) then
+          begin
+            tok := tok + U8(cp);
+            Inc(i, k);
+          end
+          else tok := tok + '\' + AVal[i + 1];
+        end;
+    else
+      tok := tok + '\' + AVal[i + 1];
+    end;
+    Inc(i, 2);
+  end;
+
   procedure Flush;
   begin
     if tok <> '' then
@@ -83,8 +163,7 @@ begin
   begin
     if (AVal[i] = '\') and (i < n) then
     begin
-      tok := tok + AVal[i + 1];
-      Inc(i, 2);
+      Escape; // "a\nb" gardait juste `anb`
       Continue;
     end;
     if inq then
@@ -221,6 +300,7 @@ function QuadletEnvDotenv(const AText: string; out AErr: string): string;
 var
   lines, sl: TStringList;
   i, before: Integer;
+  seen: Boolean;
   sect, key, val, ln: string;
 begin
   Result := '';
@@ -231,6 +311,7 @@ begin
     lines.Text := AText;
     sl.Add('# environment from podman quadlet unit');
     before := sl.Count;
+    seen := False;
     sect := '';
     i := 0;
     while i < lines.Count do
@@ -250,11 +331,18 @@ begin
         Inc(i);
       end;
       if SameText(key, 'Environment') then
-        ParseSystemdEnv(val, sl)
+      begin
+        seen := True;
+        // Environment= vide annule tout ce qui precede (systemd.exec)
+        if Trim(val) = '' then
+          while sl.Count > before do sl.Delete(sl.Count - 1)
+        else
+          ParseSystemdEnv(val, sl);
+      end
       else if SameText(key, 'EnvironmentFile') then
         sl.Add('# EnvironmentFile: ' + Trim(val) + ' (external, not inlined)');
     end;
-    if sl.Count = before then
+    if not seen and (sl.Count = before) then
     begin
       AErr := 'no Environment= found in [Container]/[Service]';
       Exit;

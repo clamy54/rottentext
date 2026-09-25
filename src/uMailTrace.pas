@@ -15,7 +15,7 @@ function MailTraceReport(const S: string): string;
 implementation
 
 uses
-  Classes, SysUtils, DateUtils;
+  Classes, SysUtils, DateUtils, LConvEncoding;
 
 const
   MT_MAX_BYTES = 8 * 1024 * 1024;
@@ -183,6 +183,26 @@ begin
   end;
 end;
 
+// cp1252 et 8859-x ne sont pas du latin-1 (EUR sortait U+0080). Tables de
+// LConvEncoding, latin-1 en repli pour un 8859 qu'elle n'a pas
+function CharsetToUtf8(const S, ACharset: string): string;
+var
+  cs: string;
+  ok: Boolean;
+begin
+  cs := NormalizeEncoding(Trim(ACharset));
+  cs := StringReplace(cs, '_', '', [rfReplaceAll]);
+  if Copy(cs, 1, 7) = 'windows' then cs := 'cp' + Copy(cs, 8, MaxInt)
+  else if cs = 'latin1' then cs := 'iso88591'
+  else if cs = 'latin9' then cs := 'iso885915'
+  else if (cs = 'usascii') or (cs = 'ascii') then Exit(S);
+  if (cs = 'utf8') or (cs = '') then Exit(S);
+  Result := ConvertEncodingToUTF8(S, cs, ok);
+  if ok then Exit;
+  if (Pos('8859', cs) > 0) or (Pos('cp125', cs) > 0) then Exit(Latin1ToUtf8(S));
+  Result := S;
+end;
+
 function DecodeMimeWords(const V: string): string;
 var
   i, q1, q2, q3, q4: Integer;
@@ -220,8 +240,7 @@ begin
             else dec := '';
             if dec <> '' then
             begin
-              if (Pos('8859', cs) > 0) or (Pos('1252', cs) > 0) then
-                dec := Latin1ToUtf8(dec);
+              dec := CharsetToUtf8(dec, cs);
               Result := Result + dec;
               i := q4 + 2;
               // l'espace entre deux encoded-words consecutifs se jette (RFC 2047)

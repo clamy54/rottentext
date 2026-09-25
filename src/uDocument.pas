@@ -148,6 +148,9 @@ begin
   {$IFDEF LINUX}
   ATime := ATime + st.st_mtime_nsec;
   {$ENDIF}
+  {$IFDEF DARWIN}
+  ATime := ATime + st.st_mtimensec;
+  {$ENDIF}
   ASize := st.st_size;
   AId := Int64(st.st_ino);
   Result := True;

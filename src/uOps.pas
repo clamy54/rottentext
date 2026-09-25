@@ -1097,10 +1097,60 @@ begin
   end;
 end;
 
+// blancs entre elements = indentation, ils sautent. Contenu mixte (texte non
+// blanc, ou blanc sans saut de ligne) et xml:space="preserve" herite : tout
+// reste verbatim. Le writer n'indente pas un element dont le 1er et le dernier
+// enfant sont du texte : des noeuds texte vides le lui font croire, sinon un
+// 2e formatage prenait le retour a la ligne ajoute pour de l'indentation.
+procedure XmlDropIndent(ANode: TDOMNode; APreserve: Boolean);
+const
+  TXT = [TEXT_NODE, CDATA_SECTION_NODE];
+var
+  c, nx: TDOMNode;
+  hasElem, mixed: Boolean;
+  sp: DOMString;
+begin
+  if ANode.NodeType = ELEMENT_NODE then
+  begin
+    sp := TDOMElement(ANode).GetAttribute('xml:space');
+    if sp = 'preserve' then APreserve := True
+    else if sp = 'default' then APreserve := False;
+  end;
+  hasElem := False; mixed := APreserve;
+  c := ANode.FirstChild;
+  while c <> nil do
+  begin
+    if c.NodeType = ELEMENT_NODE then hasElem := True
+    else if (c.NodeType in TXT) and
+            ((Trim(c.NodeValue) <> '') or (Pos(#10, c.NodeValue) = 0)) then mixed := True;
+    c := c.NextSibling;
+  end;
+  if hasElem and mixed then
+  begin
+    if not (ANode.FirstChild.NodeType in TXT) then
+      ANode.InsertBefore(ANode.OwnerDocument.CreateTextNode(''), ANode.FirstChild);
+    if not (ANode.LastChild.NodeType in TXT) then
+      ANode.AppendChild(ANode.OwnerDocument.CreateTextNode(''));
+  end;
+  c := ANode.FirstChild;
+  while c <> nil do
+  begin
+    nx := c.NextSibling;
+    if c.NodeType = ELEMENT_NODE then
+      XmlDropIndent(c, APreserve)
+    else if (c.NodeType = TEXT_NODE) and hasElem and (not mixed) and
+            (Trim(c.NodeValue) = '') then
+      ANode.RemoveChild(c).Free;
+    c := nx;
+  end;
+end;
+
 function XmlFormat(const S: string; out AResult, AError: string): Boolean;
 var
   doc: TXMLDocument;
   inS, outS: TStringStream;
+  prs: TDOMParser;
+  src: TXMLInputSource;
 begin
   AError := '';
   AResult := '';
@@ -1114,12 +1164,25 @@ begin
   outS := TStringStream.Create('');
   try
     try
-      ReadXMLFile(doc, inS);
+      // ReadXMLFile jette les noeuds blancs : <value> </value> sortait <value/>
+      prs := TDOMParser.Create;
+      try
+        prs.Options.PreserveWhitespace := True;
+        src := TXMLInputSource.Create(inS);
+        try
+          prs.Parse(src, doc);
+        finally
+          src.Free;
+        end;
+      finally
+        prs.Free;
+      end;
       if (doc = nil) or (doc.DocumentElement = nil) then
       begin
         AError := 'no root element';
         Exit(False);
       end;
+      XmlDropIndent(doc.DocumentElement, False);
       WriteXMLFile(doc, outS);
       AResult := outS.DataString;
       Result := True;

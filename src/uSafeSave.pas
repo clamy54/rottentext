@@ -271,6 +271,105 @@ begin
   Result := THandle(FpOpen(PChar(AName), O_WRONLY or O_CREAT or O_EXCL, &600));
 end;
 
+{$IFDEF LINUX}
+function listxattr(path, list: PChar; size: size_t): ssize_t; cdecl; external 'c';
+function getxattr(path, name: PChar; value: Pointer; size: size_t): ssize_t; cdecl; external 'c';
+function setxattr(path, name: PChar; value: Pointer; size: size_t; flags: cint): cint; cdecl; external 'c';
+{$ENDIF}
+{$IFDEF DARWIN}
+function listxattr(path, list: PChar; size: size_t; options: cint): ssize_t; cdecl; external 'c';
+function getxattr(path, name: PChar; value: Pointer; size: size_t; position: LongWord; options: cint): ssize_t; cdecl; external 'c';
+function setxattr(path, name: PChar; value: Pointer; size: size_t; position: LongWord; options: cint): cint; cdecl; external 'c';
+function acl_get_file(path: PChar; typ: cint): Pointer; cdecl; external 'c';
+function acl_set_file(path: PChar; typ: cint; acl: Pointer): cint; cdecl; external 'c';
+function acl_free(obj: Pointer): cint; cdecl; external 'c';
+const
+  ACL_TYPE_EXTENDED = $100;
+{$ENDIF}
+
+// xattr (Linux: les ACL POSIX y vivent, system.posix_acl_access) et ACL
+// macOS. A faire AVANT le chown: apres, le temp n'est plus a nous.
+// security.capability a part (ACaps): chown(2) l'efface, on la repose apres.
+// security.*/trusted.* autres demandent des droits qu'on n'a pas: label
+// selinux repose par le noyau, on ne s'en plaint pas. FS sans xattr = rien
+// a perdre ; attribut disparu entre list et get = rien a perdre non plus.
+function CopyMeta(const ASrc, ADst: string; ACaps: Boolean): Boolean;
+{$IF DEFINED(LINUX) OR DEFINED(DARWIN)}
+const
+  {$IFDEF LINUX}ENOATTR = ESysENODATA;{$ELSE}ENOATTR = ESysENOATTR;{$ENDIF}
+
+  function NoSupport(e: cint): Boolean;
+  begin
+    Result := (e = ESysEOPNOTSUPP) or (e = ESysENOSYS);
+  end;
+
+var
+  names, val: RawByteString;
+  n, sz, i, j: ssize_t;
+  nm: PChar;
+  isCap: Boolean;
+  {$IFDEF DARWIN}acl: Pointer;{$ENDIF}
+begin
+  Result := True;
+  n := listxattr(PChar(ASrc), nil, 0{$IFDEF DARWIN}, 0{$ENDIF});
+  if n < 0 then Exit(NoSupport(fpgeterrno));
+  if n > 0 then
+  begin
+    SetLength(names, n);
+    n := listxattr(PChar(ASrc), @names[1], n{$IFDEF DARWIN}, 0{$ENDIF});
+    if n < 0 then Exit(NoSupport(fpgeterrno));
+    i := 1;
+    while i <= n do
+    begin
+      j := i;
+      while (j <= n) and (names[j] <> #0) do Inc(j);
+      nm := PChar(@names[i]);
+      i := j + 1;
+      if nm^ = #0 then Continue;
+      isCap := StrComp(nm, 'security.capability') = 0;
+      if isCap <> ACaps then Continue;
+      sz := getxattr(PChar(ASrc), nm, nil, 0{$IFDEF DARWIN}, 0, 0{$ENDIF});
+      if sz < 0 then
+      begin
+        if fpgeterrno <> ENOATTR then Result := False;
+        Continue;
+      end;
+      SetLength(val, sz);
+      if sz > 0 then
+        sz := getxattr(PChar(ASrc), nm, @val[1], sz{$IFDEF DARWIN}, 0, 0{$ENDIF});
+      if sz < 0 then
+      begin
+        if fpgeterrno <> ENOATTR then Result := False;
+        Continue;
+      end;
+      if setxattr(PChar(ADst), nm, PChar(val), sz{$IFDEF DARWIN}, 0{$ENDIF}, 0) <> 0 then
+        if isCap or ((StrLComp(nm, 'security.', 9) <> 0) and (StrLComp(nm, 'trusted.', 8) <> 0)) then
+          Result := False;
+    end;
+  end;
+  {$IFDEF DARWIN}
+  if not ACaps then
+  begin
+    acl := acl_get_file(PChar(ASrc), ACL_TYPE_EXTENDED);
+    if acl = nil then
+    begin
+      // ENOENT = pas d'ACL sur ce fichier
+      if not ((fpgeterrno = ESysENOENT) or NoSupport(fpgeterrno)) then Result := False;
+    end
+    else
+    begin
+      if acl_set_file(PChar(ADst), ACL_TYPE_EXTENDED, acl) <> 0 then Result := False;
+      acl_free(acl);
+    end;
+  end;
+  {$ENDIF}
+end;
+{$ELSE}
+begin
+  Result := True;
+end;
+{$ENDIF}
+
 function ReplaceByRename(const ATmp, ADest: string): Boolean;
 var
   st: Stat;
@@ -284,12 +383,16 @@ begin
   // fichier d'autrui) laisse le fichier a nous, comme avant.
   if hasMeta then
   begin
+    if not CopyMeta(ADest, ATmp, False) then
+      LastMetaError := Format('ACL or extended attributes of %s could not be preserved', [ADest]);
     // chown PUIS chmod: un chown efface setuid/setgid sur la plupart des systemes
     if fpChown(PChar(ATmp), st.st_uid, st.st_gid) <> 0 then
       LastMetaError := Format('owner of %s could not be preserved', [ADest]);
     if fpChmod(PChar(ATmp), st.st_mode and $0FFF) <> 0 then
       LastMetaError := Format('permissions of %s could not be preserved', [ADest]);
-    // ACL POSIX et attributs etendus ne sont PAS repris
+    // capabilities en dernier: le chown vient de les effacer
+    if not CopyMeta(ADest, ATmp, True) then
+      LastMetaError := Format('capabilities of %s could not be preserved', [ADest]);
   end
   else
   begin

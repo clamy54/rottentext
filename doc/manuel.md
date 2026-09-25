@@ -110,10 +110,10 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
   fin de ligne en CRLF et ne produise pas un diff de 12 000 changements pour zéro
   changement réel.
 - **Copie à la sélection** : surligner du texte le copie dans le presse-papiers,
-  comme dans un terminal. Sous Windows et macOS c'est *Edit › Copy on Select*
-  (coché par défaut, retenu d'une session à l'autre). Sous Linux/X11 la sélection
-  est le tampon PRIMARY : le clic du milieu la colle n'importe où, et Ctrl+V n'est
-  pas touché.
+  comme dans un terminal : *Edit › Copy on Select* (coché par défaut, retenu
+  d'une session à l'autre). Sous Linux/X11 la sélection est aussi le tampon
+  PRIMARY pour les autres applications, et le clic du milieu dans l'éditeur
+  colle le presse-papiers à la position de la souris.
 - **Tabulations** : *View › Map Tab to Space* (coché par défaut, et retenu d'une
   session à l'autre) fait que la touche Tab insère des espaces jusqu'au prochain
   taquet, pas une tabulation. *Edit › Convert Tabs to Spaces* fait le ménage dans
@@ -286,7 +286,10 @@ passe" prévisible.
   piège dans lequel tu choisis de marcher.
 - **LDAP** : tout le fourre-tout LDAP sous un seul sous-menu. Des valeurs
   `userPassword...` aux formats slappasswd d'OpenLDAP (SSHA et ses amies, salées,
-  plus bcrypt via `{CRYPT}`, plus le passthrough SASL), et des générateurs d'entrées
+  plus bcrypt via `{CRYPT}`, plus `{ARGON2}` au coût par défaut du module
+  `pw-argon2`, une entrée par variante puisqu'un slapd lié à libargon2 utilise
+  t=5, m=7168 KiB et un slapd lié à libsodium t=2, m=64 Mio, plus le passthrough
+  SASL), et des générateurs d'entrées
   **LDIF** complets pour un domaine Root, une Organizational Unit, une Person ou
   Account, un posixGroup, un groupOfNames, et un compte de Service ou de Bind. Les
   mots de passe sont saisis masqués, hachés, et seul le hash arrive dans le LDIF.

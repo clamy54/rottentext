@@ -225,6 +225,22 @@ begin
   end;
 end;
 
+function Balanced(const U: string; AClose: Char): Boolean;
+var
+  i, o, c: Integer;
+  op: Char;
+begin
+  case AClose of
+    ')': op := '(';
+    ']': op := '[';
+  else op := '{';
+  end;
+  o := 0; c := 0;
+  for i := 1 to Length(U) do
+    if U[i] = op then Inc(o) else if U[i] = AClose then Inc(c);
+  Result := o >= c;
+end;
+
 procedure ScanURL(const S: string; L: TStringList);
 var
   i, p, e, sStart: Integer;
@@ -246,8 +262,13 @@ begin
               not (S[e] in ['"', '''', '<', '>', '`']) do
           Inc(e);
         url := Copy(S, sStart, e - sStart);
+        // wiki/Foo_(bar) garde sa parenthese, (voir http://x/) perd la sienne
         while (url <> '') and (url[Length(url)] in ['.', ',', ';', ':', ')', ']', '}', '!', '?']) do
+        begin
+          if (url[Length(url)] in [')', ']', '}']) and Balanced(url, url[Length(url)]) then
+            Break;
           SetLength(url, Length(url) - 1);
+        end;
         if Length(url) > p - sStart + 3 then Bump(L, url);
         p := e;
         Continue;

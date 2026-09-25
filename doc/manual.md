@@ -102,9 +102,10 @@ The part that opens files. Kept deliberately boring. Highlights:
   file on Windows does not silently turn every line ending into CRLF and produce a
   diff with 12,000 changes and zero actual changes.
 - **Copy on select**: highlighting text copies it to the clipboard, the way
-  terminals do. On Windows and macOS this is *Edit › Copy on Select* (on by
-  default, remembered across sessions). On Linux/X11 the selection is the
-  PRIMARY buffer: middle-click pastes it anywhere, and Ctrl+V is left alone.
+  terminals do: *Edit › Copy on Select* (on by default, remembered across
+  sessions). On Linux/X11 the selection is also the PRIMARY buffer for other
+  applications, and a middle-click inside the editor pastes the clipboard at
+  the mouse position.
 - **Tabs**: *View › Map Tab to Space* (on by default, and remembered across
   sessions) makes the Tab key insert spaces up to the next tab stop rather than a
   tab character. *Edit › Convert Tabs to Spaces* cleans up an existing file,
@@ -271,7 +272,10 @@ rather than handing you a predictable "password".
   you are choosing to walk into.
 - **LDAP**: the whole LDAP grab-bag under one submenu. `userPassword...` values in
   the OpenLDAP slappasswd formats (SSHA and friends, salted, plus bcrypt via
-  `{CRYPT}`, plus SASL passthrough), and full **LDIF** entry generators for a Root
+  `{CRYPT}`, plus `{ARGON2}` with the default cost of the `pw-argon2` module,
+  one entry per build flavour since slapd linked against libargon2 uses t=5,
+  m=7168 KiB and slapd linked against libsodium uses t=2, m=64 MiB, plus SASL
+  passthrough), and full **LDIF** entry generators for a Root
   domain, an Organizational Unit, a Person or Account, a posixGroup, a
   groupOfNames, and a Service or Bind account. Passwords are entered masked, hashed,
   and only the hash reaches the LDIF. For when the directory server is down and,
