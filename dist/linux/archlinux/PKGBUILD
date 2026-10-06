@@ -52,7 +52,7 @@ source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
 # Empreinte de l'archive du tag, pas un SKIP: le tag d'une version publiee ne
 # bouge plus. A REGENERER a chaque montee de version (`updpkgsums`), sinon
 # makepkg refusera une source pourtant legitime.
-sha256sums=('SKIP'
+sha256sums=('2dc12e506f2f0d9e6922cd33fc4341b95428652b26393ac839ba4a529d332046'
             'SKIP'
             'SKIP')
 
