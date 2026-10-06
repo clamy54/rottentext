@@ -478,7 +478,7 @@ faille le préciser en dit long sur les outils que tu utilisais avant celui-ci.
 
 ## Licence et crédits
 
-RottenText est publié sous licence GPL-V2.
+RottenText est publié sous licence GPL-V3.
 
 Développé par Cyril LAMY.
 

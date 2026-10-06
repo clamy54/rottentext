@@ -117,7 +117,7 @@ begin
     Inc(y, 30);
     AddLabel(f, y, 'Developed by Cyril LAMY', False);
     Inc(y, 24);
-    AddLabel(f, y, 'Released under the GPL-V2 license', False);
+    AddLabel(f, y, 'Released under the GPL-V3 license', False);
     Inc(y, 30);
     AddLabel(f, y, 'https://github.com/clamy54/rottentext', True);
     Inc(y, 34);

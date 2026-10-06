@@ -1,8 +1,8 @@
 # Third-party licenses
 
 RottenText is released by Cyril LAMY under the **GNU General Public License,
-version 2** — full text in [`LICENSE`](LICENSE), as announced in
-`Help > About RottenText`.
+version 3 or (at your option) any later version** — full text in
+[`LICENSE`](LICENSE), as announced in `Help > About RottenText`.
 
 This file inventories every third-party work that ends up in a RottenText
 build, or that RottenText derives from, together with its license and what a
@@ -24,21 +24,21 @@ from memory.
 | License | SIL Open Font License, Version 1.1 |
 | Full text | [`licenses/OFL-1.1-Monaspace.txt`](licenses/OFL-1.1-Monaspace.txt) |
 
-**Where it is used:** the 20 TTF files in `fonts/`
-(`Monaspace{Neon,Argon,Xenon,Radon,Krypton}Frozen-{Regular,Bold,Italic,BoldItalic}.ttf`)
-are compiled into the executable as RCDATA resources (see `src/uFontEmbed.pas`),
-so **the shipped binary itself contains the font software**. The `fonts/`
-directory is kept as the build-time source of those resources and as a runtime
-fallback. The editor font is picked in `View > Font...`.
+**Where it is used:** the 20 TTF files
+`Monaspace{Neon,Argon,Xenon,Radon,Krypton}Frozen-{Regular,Bold,Italic,BoldItalic}.ttf`
+are compiled into the executable as RCDATA resources by the RottenUI kit (see
+section 7; `rottenui/src/uFontEmbed.pas`, sources in `rottenui/assets/fonts/`),
+so **the shipped binary itself contains the font software**. The editor font is
+picked in `View > Font...`.
 
 **Compliance notes:**
 
 - The fonts are redistributed **unmodified**.
 - OFL clause 2 explicitly allows the font software to be *bundled, embedded,
   redistributed and/or sold with any software*, so shipping OFL fonts inside a
-  GPL-2 application is fine.
+  GPL-3 application is fine.
 - OFL clause 5 requires the font software to remain **entirely under the OFL** —
-  it is *not* relicensed to GPL-2 by being embedded. The GPL-2 covers
+  it is *not* relicensed to GPL-3 by being embedded. The GPL-3 covers
   RottenText's own code; the fonts stay OFL.
 - The license text must travel with the fonts: that is what
   `licenses/OFL-1.1-Monaspace.txt` is for. **Keep it in any redistribution**,
@@ -57,7 +57,7 @@ fallback. The editor font is picked in `View > Font...`.
 | Full text | [`licenses/OFL-1.1-JetBrainsMono.txt`](licenses/OFL-1.1-JetBrainsMono.txt) |
 
 **Where it is used:** the 4 TTF files
-`fonts/JetBrainsMonoNLNerdFontMono-{Regular,Bold,Italic,BoldItalic}.ttf` are
+`JetBrainsMonoNLNerdFontMono-{Regular,Bold,Italic,BoldItalic}.ttf` are
 compiled into the executable the same way as Monaspace, and offered as an
 alternative editor font in `View > Font...`.
 
@@ -85,7 +85,7 @@ The whole UI is built on the LCL, which is statically linked into the
 executable. The modified LGPL exists precisely to allow this: linking does not
 force the application to become LGPL, provided the LCL itself stays under its
 own license and users can relink against a modified LCL. Compatible with
-RottenText's GPL-2.
+RottenText's GPL-3.
 
 ## 3. SynEdit — MPL 1.1, or GPL 2 or later, at your option
 
@@ -107,8 +107,8 @@ dual MPL/GPL notice and a description of the change, as MPL 1.1 §3.1 and §3.3
 require. The notice is deliberately **kept dual** (not stripped down to GPL),
 so recipients keep the choice between the MPL and the GPL.
 
-Because SynEdit offers GPL 2+ as an alternative, it is compatible with
-RottenText's GPL-2 as a whole.
+Because SynEdit offers GPL 2 **or later** as an alternative, it is compatible
+with RottenText's GPL-3 as a whole.
 
 ## 4. Free Pascal RTL / FCL — modified LGPL (static-linking exception)
 
@@ -138,9 +138,10 @@ The author asks that products using TRegExpr acknowledge it. Doing so here:
 > Partial Copyright (c) 2004 Andrey V. Sorokin, <https://sorokin.engineer/>
 
 
-## 6. Colour themes (`themes/`)
+## 6. Colour themes
 
-The theme files are **original JSON written for RottenText**. No code, no file
+The theme files (now shipped inside the RottenUI kit, `rottenui/assets/themes/`,
+and compiled into the executable) are **original JSON written for RottenText**. No code, no file
 and no asset is taken from the projects below; several palettes are, however,
 openly *inspired by* well-known colour schemes, and credit is due to their
 authors:
@@ -157,6 +158,35 @@ rights holder and object to an adaptation, open an issue and it will be renamed
 or reworked.
 
 
+## 7. RottenUI — GPL 3 or later
+
+| | |
+|---|---|
+| Upstream | <https://github.com/clamy54/rottenUI> (git submodule `rottenui/`) |
+| Copyright | Copyright (C) 2023-2026 Cyril LAMY |
+| License | GNU General Public License, version 3 or any later version |
+
+**Where it is used:** the interface kit shared by the Rotten programs, by the
+same author: themes, fonts, menu bar, tab bar, dialogs and message boxes. It is
+statically linked. Same licence as RottenText itself, so there is nothing to
+reconcile; it is listed here because it is a separate repository, and because
+it is what brings sections 1, 1b and 8 into the binary.
+
+## 8. Tabler Icons — MIT
+
+| | |
+|---|---|
+| Upstream | <https://tabler.io/icons> |
+| Copyright | Copyright (c) 2020-2024 Pawel Kuna (Tabler Icons) |
+| License | MIT |
+| Full text | [`licenses/MIT-Tabler.txt`](licenses/MIT-Tabler.txt) |
+
+**Where it is used:** RottenUI draws its icons (message boxes, dialogs) from
+monochrome masks rendered from Tabler icons and compiled into the executable as
+resources (`rottenui/src/uIcons.pas`). The MIT licence asks for its copyright
+and permission notice to accompany copies: that is what
+`licenses/MIT-Tabler.txt` is for.
+
 ---
 
 ## Summary for redistributors
@@ -168,8 +198,8 @@ If you redistribute RottenText (source **or** binary), you must at least:
    Monaspace and JetBrains Mono fonts, and the OFL requires its text to be
    distributed with them. The fonts stay under the OFL; they are not relicensed
    by being embedded.
-2. Keep this file and [`LICENSE`](LICENSE) (the GPL-2 terms of RottenText
-   itself).
+2. Keep this file and [`LICENSE`](LICENSE) (the GPL-3 terms of RottenText
+   itself), and `licenses/MIT-Tabler.txt` for the embedded icons.
 3. Keep the dual MPL/GPL notice at the top of `src/uWrapView.pas` if you
    redistribute the source.
 4. Do not name a modified version of the fonts with a Reserved Font Name

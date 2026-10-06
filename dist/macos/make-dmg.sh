@@ -47,6 +47,7 @@ cp "$root/LICENSE" "$stage/Licenses/LICENSE.txt"
 cp "$root/LICENSE_THIRD_PARTIES.md" "$stage/Licenses/"
 cp "$root/licenses/OFL-1.1-Monaspace.txt" "$stage/Licenses/"
 cp "$root/licenses/OFL-1.1-JetBrainsMono.txt" "$stage/Licenses/"
+cp "$root/licenses/MIT-Tabler.txt" "$stage/Licenses/"
 
 # image lecture/ecriture d'abord : la mise en page (positions des icones, taille
 # de la fenetre) est stockee dans le .DS_Store du volume, donc il faut pouvoir

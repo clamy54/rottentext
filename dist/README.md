@@ -5,17 +5,17 @@ distributable package for the target platform.
 
 Two things every package must carry, whatever the platform:
 
-- **`syntax/` and `themes/` must sit next to the executable.** The loaders
-  resolve them as `ExtractFilePath(ParamStr(0)) + 'syntax'` (resp. `themes`) —
-  nowhere else. A missing `themes/` is survivable (default colours, no
-  `View > Theme` menu); a missing `syntax/` means no syntax highlighting.
-  `fonts/` is *not* needed at runtime: the 20 Monaspace TTFs and the 4
+- **`syntax/` must sit next to the executable.** The loader
+  resolves it as `ExtractFilePath(ParamStr(0)) + 'syntax'` —
+  nowhere else. A missing `syntax/` means no syntax highlighting. Themes and
+  fonts are *not* needed at runtime: the themes, the 20 Monaspace TTFs and the 4
   JetBrains Mono Nerd Font TTFs are compiled into the binary as resources.
 - **The licenses.** Because those fonts live *inside* the executable, the SIL
   OFL requires its text to travel with any distribution, including binary-only
   ones. Every packaging below ships `licenses/OFL-1.1-Monaspace.txt`,
-  `licenses/OFL-1.1-JetBrainsMono.txt`, `LICENSE` and
-  `LICENSE_THIRD_PARTIES.md`. Do not drop them.
+  `licenses/OFL-1.1-JetBrainsMono.txt`, `licenses/MIT-Tabler.txt` (the icons of
+  the interface kit), `LICENSE` and `LICENSE_THIRD_PARTIES.md`. Do not drop
+  them.
 
 The version comes from `RT_VERSION` in `src/uMain.pas` — the single source of
 truth, also shown in `Help > About`. All three packagings extract it themselves;
@@ -30,12 +30,12 @@ Inno Setup 6 installer.
 2. Compile the installer: `ISCC.exe dist\windows\rottentext.iss` (or open it in
    the Inno Setup IDE). Output: `dist\windows\output\RottenText-Setup-<version>.exe`.
 
-Installs the executable, `syntax\`, `themes\` and the licenses into the install
+Installs the executable, `syntax\` and the licenses into the install
 directory, plus Start Menu (and optional desktop) shortcuts.
 
 ### License pages
 
-The wizard's **License Agreement** page shows `LICENSE` (GPL-2) — the license of
+The wizard's **License Agreement** page shows `LICENSE` (GPL-3) — the license of
 RottenText itself, the one the user accepts. The **Information** page right after
 shows the third-party inventory: embedded Monaspace and JetBrains Mono fonts,
 LCL, FPC, SynEdit.

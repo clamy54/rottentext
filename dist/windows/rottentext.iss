@@ -38,7 +38,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog commandline
 UninstallDisplayIcon={app}\{#AppExe}
-; page d'acceptation = la GPL-2, la licence de RottenText lui-meme
+; page d'acceptation = la GPL-3, la licence de RottenText lui-meme
 LicenseFile=..\..\LICENSE
 ; page d'info juste apres: l'inventaire des oeuvres tierces embarquees (polices
 ; Monaspace compilees DANS l'exe, LCL/FPC, SynEdit). L'afficher n'est pas une

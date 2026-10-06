@@ -451,7 +451,7 @@ tools you were using before this one.
 
 ## License and credits
 
-RottenText is released under the GPL-V2 license.
+RottenText is released under the GPL-V3 license.
 
 Developed by Cyril LAMY.
 

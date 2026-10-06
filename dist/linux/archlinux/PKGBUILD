@@ -119,4 +119,6 @@ EOF
     "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-Monaspace.txt"
   install -Dm644 licenses/OFL-1.1-JetBrainsMono.txt \
     "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-JetBrainsMono.txt"
+  install -Dm644 licenses/MIT-Tabler.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/MIT-Tabler.txt"
 }

@@ -103,11 +103,12 @@ than most manuals do.
 
 ## License
 
-GPL-2. See [`LICENSE`](LICENSE).
+GPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 The binary embeds the **Monaspace** font family and **JetBrains Mono NL Nerd
-Font** (both SIL Open Font License 1.1) and statically links the LCL, the Free
-Pascal RTL and SynEdit. Every third-party work
+Font** (both SIL Open Font License 1.1) and the Tabler icons (MIT), and
+statically links RottenUI, the LCL, the Free Pascal RTL and SynEdit. Every
+third-party work
 that ends up in a build is inventoried in
 [`LICENSE_THIRD_PARTIES.md`](LICENSE_THIRD_PARTIES.md), with what a redistributor
 has to do about it. If you repackage RottenText, read that file. It is short.

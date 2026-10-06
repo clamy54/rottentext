@@ -84,7 +84,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Cyril LAMY - GPL v2</string>
+	<string>Cyril LAMY - GPL v3</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

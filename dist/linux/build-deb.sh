@@ -57,6 +57,8 @@ install -m 0644 "$root/LICENSE" "$pkg/usr/share/doc/rottentext/copyright"
 install -m 0644 "$root/LICENSE_THIRD_PARTIES.md" "$pkg/usr/share/doc/rottentext/"
 install -m 0644 "$root/licenses/OFL-1.1-Monaspace.txt" "$pkg/usr/share/doc/rottentext/"
 install -m 0644 "$root/licenses/OFL-1.1-JetBrainsMono.txt" "$pkg/usr/share/doc/rottentext/"
+# icones Tabler (MIT), embarquees par RottenUI
+install -m 0644 "$root/licenses/MIT-Tabler.txt" "$pkg/usr/share/doc/rottentext/"
 
 # Icones dans le theme hicolor. La source (icons/rottentext.png) n'est PAS
 # carree (629x754) : on la met au carre avec du transparent plutot que de la
