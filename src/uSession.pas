@@ -43,7 +43,7 @@ var
 implementation
 
 uses
-  fpjson, jsonparser, uJsonSafe, uSafeSave, uDocument, uEncoding, uRecent, uHighlight;
+  fpjson, jsonparser, uJsonSafe, uRtSafeSave, uDocument, uEncoding, uRecent, uHighlight;
 
 const
   PROBE_BUDGET_MS   = 2000;             // budget TOTAL des sondes lentes
@@ -575,7 +575,7 @@ begin
           e.Add('caretY', d.View.Syn.CaretY);
           e.Add('top', d.View.Syn.TopLine);
           // un untitled n'a pas d'extension a auto-detecter au restore
-          e.Add('syntax', LanguageLabel(d.View.Syn.Highlighter));
+          e.Add('syntax', LanguageLabel(EditorHl(d.View.Syn)));
         end;
         arr.Add(e);
         pos := arr.Count - 1;

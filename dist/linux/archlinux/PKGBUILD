@@ -1,7 +1,7 @@
 # Maintainer: Cyril Lamy <root@be-root.com>
 #
 # Layout identique au .deb, et pour la meme raison: le binaire N'EST PAS dans
-# /usr/bin. Les loaders cherchent syntax/ et themes/ A COTE de l'executable
+# /usr/bin. Le loader cherche syntax/ A COTE de l'executable
 # (ExtractFilePath(ParamStr(0))), donc un /usr/bin/rottentext nu irait chercher
 # /usr/bin/syntax/. Tout vit dans /usr/lib/rottentext/ et /usr/bin/rottentext
 # est un WRAPPER qui fait exec sur le vrai binaire: exec remplace argv[0] par le
@@ -11,7 +11,7 @@
 # Empaquetage non officiellement supporte.
 
 pkgname=rottentext
-pkgver=1.3
+pkgver=2.0
 pkgrel=1
 pkgdesc='A rotten editor for rotten files and rotten days'
 arch=('x86_64')
@@ -20,58 +20,57 @@ license=('GPL-3.0-or-later')
 
 # Deux familles de dependances, et la seconde est le piege:
 #
-#  - LIEES au binaire (gtk2, libx11): l'editeur de liens les inscrit, namcap
-#    les retrouve seul.
+#  - LIEES au binaire (gtk3): l'editeur de liens les inscrit, namcap les
+#    retrouve seul.
 #  - ouvertes par DLOPEN (pango, fontconfig): invisibles pour l'editeur de
 #    liens comme pour namcap, qui ne lisent que la table des symboles.
-#    uFontEmbed charge libfontconfig.so.1, libpangocairo-1.0.so.0 et
+#    uFontEmbed (RottenUI) charge libfontconfig.so.1, libpangocairo-1.0.so.0 et
 #    libpangoft2-1.0.so.0 a l'execution, pour enregistrer les Monaspace
-#    embarquees dans le binaire. gtk2 les tire aujourd'hui de toute facon, mais
+#    embarquees dans le binaire. gtk3 les tire aujourd'hui de toute facon, mais
 #    s'en remettre aux dependances d'un autre paquet est un pari, pas une regle:
 #    le jour ou elles changent, c'est notre police qui disparait.
 depends=(
-  # ATTENTION: gtk2 n'est PLUS dans les depots officiels d'Arch, il vient
-  # d'AUR, comme lazarus-gtk2 ci-dessous. makepkg seul ne les resoudra pas:
-  #   yay -S gtk2 lazarus-gtk2
-  'gtk2'
-  'libx11'
+  'gtk3'
   'pango'
   'fontconfig'
 )
 
-# lazarus tire fpc et fpc-src. lazarus-gtk2 vient d'AUR: le paquet lazarus
-# officiel ne livre que les unites LCL qt5 et qt6, aucune gtk2, et sans lui
-# lazbuild voudrait compiler la LCL gtk2 lui-meme et l'ecrire dans
-# /usr/lib/lazarus, ou makepkg n'a pas les droits. Le declarer ici fait echouer
-# tot, avec un message clair, plutot qu'au milieu de la compilation.
+# GTK3 demande Lazarus trunk: aucun paquet ne le livre, lazbuild est donc bati
+# ici depuis un commit epingle (meme commit que la CI). fpc suffit pour ca.
 # imagemagick sert aux icones redimensionnees.
-makedepends=('lazarus' 'lazarus-gtk2' 'imagemagick')
+makedepends=('fpc' 'imagemagick')
 
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# L'archive d'un tag ne contient pas les sous-modules: RottenUI vient a part,
+# au commit que le sous-module epingle. A REALIGNER quand il bouge.
+_uicommit=1c32c0ed04c8b7ec0875e5a50c9733ff3fbdc7ce
+_lazcommit=39a5eec43c6846e8d63cbb6c5fd263db38c4ea5b
+
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "rottenUI-$_uicommit.tar.gz::https://github.com/clamy54/rottenUI/archive/$_uicommit.tar.gz"
+        "lazarus-$_lazcommit.tar.gz::https://gitlab.com/freepascal.org/lazarus/lazarus/-/archive/$_lazcommit/lazarus-$_lazcommit.tar.gz")
 
 # Empreinte de l'archive du tag, pas un SKIP: le tag d'une version publiee ne
 # bouge plus. A REGENERER a chaque montee de version (`updpkgsums`), sinon
 # makepkg refusera une source pourtant legitime.
-sha256sums=('76c282914c083d2828788eac5070cdf53518023ecb6c8bd0927cb66402d419d4')
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP')
 
 prepare() {
-  cd "$pkgname-$pkgver"
-
-  # lazbuild lit le repertoire Lazarus dans sa configuration primaire. Sous
-  # makepkg celle-ci est neuve et vide, et lazbuild s'arrete alors sur
-  # « Invalid Lazarus directory "": directory lcl not found » -- message qui ne
-  # dit pas qu'il suffisait de le nommer. On le nomme donc, sur place: la
-  # version publiee de build.sh ne sait pas encore le chercher seule.
-  sed -i 's|^"\$lazbuild" \$buildarg|"$lazbuild" --lazarusdir=/usr/lib/lazarus $buildarg|' \
-    scripts/build.sh
-  grep -q -- '--lazarusdir' scripts/build.sh || {
-    echo "le correctif lazarusdir n'a pas pris: scripts/build.sh a change" >&2
-    return 1
-  }
+  rm -rf "$pkgname-$pkgver/rottenui"
+  cp -a "rottenUI-$_uicommit" "$pkgname-$pkgver/rottenui"
 }
 
 build() {
   cd "$pkgname-$pkgver"
+
+  # Lazarus trunk, config a part: celle de makepkg est neuve et vide, et rien
+  # ne doit s'ecrire dans /usr/lib/lazarus. build.sh lit LAZARUS_DIR.
+  make -C "$srcdir/lazarus-$_lazcommit" lazbuild
+  export PATH="$srcdir/lazarus-$_lazcommit:$PATH"
+  export LAZARUS_DIR="$srcdir/lazarus-$_lazcommit"
+  export LAZBUILD_PCP="$srcdir/lazcfg"
+
   bash scripts/build.sh --release
 }
 
@@ -81,8 +80,7 @@ package() {
   # binaire + donnees runtime, cote a cote (contrainte des loaders)
   install -Dm755 RottenText "$pkgdir/usr/lib/$pkgname/RottenText"
   cp -r syntax "$pkgdir/usr/lib/$pkgname/"
-  cp -r themes "$pkgdir/usr/lib/$pkgname/"
-  chmod -R a+rX "$pkgdir/usr/lib/$pkgname/syntax" "$pkgdir/usr/lib/$pkgname/themes"
+  chmod -R a+rX "$pkgdir/usr/lib/$pkgname/syntax"
 
   # « $@ » et non rien: c'est lui qui transmet le fichier a ouvrir, celui que le
   # .desktop passe via « %f ».

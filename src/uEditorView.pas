@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics, StdCtrls, Clipbrd, LCLType,
-  SynEdit, SynEditTypes, SynEditKeyCmds, SynEditMiscProcs, SynEditMouseCmds, uWrapView,
-  SynGutterLineNumber, SynEditPointClasses, SynPluginMultiCaret, uTheme;
+  SynEdit, SynEditTypes, SynEditKeyCmds, SynEditMiscProcs, SynEditMouseCmds, uWrapCompat,
+  SynGutterLineNumber, SynEditPointClasses, SynPluginMultiCaret, uTheme, uEditorTheme;
 
 // La selection part dans le presse-papiers sur GESTE utilisateur seulement
 // (souris, commande clavier de selection): les outils font SelectAll +
@@ -51,7 +51,7 @@ type
   TEditorView = class
   private
     FSyn: TSynEdit;
-    FWrap: TLazSynEditLineWrapPlugin;
+    FWrap: TComponent;
     FMulti: TRTMultiCaret;
     FLineNum: TSynGutterLineNumber;
     FLargeFile: Boolean;
@@ -215,8 +215,8 @@ begin
   FSyn := TRTSynEdit.Create(AParent);
   FSyn.Visible := False;
   FSyn.BorderStyle := bsNone;
-  FSyn.Font.Name := RTEditorFont;
-  FSyn.Font.Size := RTEditorSize;
+  FSyn.Font.Name := RSEditorFontName;
+  FSyn.Font.Size := RSEditorFontSize;
   FSyn.Font.Quality := fqCleartype;
   FSyn.ScrollBars := ssNone; // scrollbar verticale custom (uScrollbar)
   FMulti := TRTMultiCaret.Create(FSyn);
@@ -305,13 +305,13 @@ begin
   // le plugin wrap valide son layout de facon SYNCHRONE sur tout le buffer
   // (156 Mo = 7 s): jamais cree pour une vue nee gros fichier
   if (FWrap = nil) and not FLargeFile then
-    FWrap := TLazSynEditLineWrapPlugin.Create(FSyn);
+    FWrap := CreateWrapPlugin(FSyn);
   if FWrap <> nil then
   begin
     if RTWordWrap and not FLargeFile then
-      FWrap.FixedWrapColumn := RTWrapColumn
+      SetWrapColumn(FWrap, RTWrapColumn)
     else
-      FWrap.FixedWrapColumn := NOWRAP_COL;
+      SetWrapColumn(FWrap, NOWRAP_COL);
   end;
   if RTMapTabToSpace then
     FSyn.Options := FSyn.Options + [eoTabsToSpaces]

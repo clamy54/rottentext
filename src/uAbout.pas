@@ -13,7 +13,7 @@ implementation
 
 uses
   Classes, SysUtils, Types, Forms, Controls, StdCtrls, ExtCtrls, Graphics,
-  LCLIntf, uTheme;
+  LCLIntf, uTheme, uThemedControls;
 
 type
   TAboutForm = class(TForm)
@@ -33,7 +33,7 @@ begin
   Result.Parent := AForm;
   Result.Caption := AText;
   Result.AutoSize := True;
-  Result.Font.Color := clEditorFg;
+  Result.Font.Color := clAppFg;
   if ASize > 0 then Result.Font.Size := ASize;
   if ABold then Result.Font.Style := Result.Font.Style + [fsBold];
   if ALink then
@@ -78,7 +78,7 @@ var
   f: TAboutForm;
   img: TImage;
   ico: TIcon;
-  b: TButton;
+  b: TThemedButton;
   y: Integer;
 begin
   f := TAboutForm.CreateNew(nil);
@@ -86,7 +86,7 @@ begin
     f.Caption := 'About RottenText';
     f.BorderStyle := bsDialog;
     f.Position := poMainFormCenter;
-    f.Color := clEditorBg;
+    f.Color := clAppBg;
     f.Width := 440;
     f.Height := 470;
 
@@ -129,7 +129,7 @@ begin
     Inc(y, 22);
     AddLabel(f, y, 'https://www.nerdfonts.com/', True);
 
-    b := TButton.Create(f);
+    b := TThemedButton.Create(f);
     b.Parent := f;
     b.Caption := 'Close';
     b.ModalResult := mrOk;
@@ -137,6 +137,8 @@ begin
     b.Cancel := True;
     b.SetBounds((f.ClientWidth - 90) div 2, f.ClientHeight - 44, 90, 30);
 
+    ApplyUiFont(f);
+    DialogKeys(f);
     f.ShowModal;
   finally
     f.Free;

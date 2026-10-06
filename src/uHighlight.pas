@@ -11,7 +11,7 @@ unit uHighlight;
 interface
 
 uses
-  Classes, SysUtils, SynEditHighlighter;
+  Classes, SysUtils, SynEdit, SynEditHighlighter;
 
 function SyntaxCount: Integer;
 function SyntaxDisplayName(AIndex: Integer): string;
@@ -20,6 +20,9 @@ function HighlighterForFile(const AFileName: string): TSynCustomHighlighter;
 function IndexForFile(const AFileName: string): Integer; // -1 si aucune
 function IndexForName(const AName: string): Integer;    // -1 si nom inconnu
 function LanguageLabel(AHl: TSynCustomHighlighter): string; // 'Plain Text' si nil
+// Lazarus 5 type TSynEdit.Highlighter sur une classe de base: rend celui de
+// SynEdit, nil sinon
+function EditorHl(ASyn: TSynEdit): TSynCustomHighlighter;
 // False si le langage n'a pas de commentaires (Diff, Log, Plain Text)
 function CommentTokensFor(AHl: TSynCustomHighlighter; out ALine, AOpen, AClose: string): Boolean;
 // changement de theme a chaud
@@ -129,19 +132,19 @@ end;
 procedure ApplyScopeTheme(AHl: TSynCustomHighlighter);
 var
   i: Integer;
-  attr: TSynHighlighterAttributes;
   fg: TColor;
   ital, has: Boolean;
 begin
+  // pas de variable typee: la classe de l'attribut a change de nom entre
+  // Lazarus 4 et 5, pas ses proprietes
   for i := 0 to AHl.AttrCount - 1 do
   begin
-    attr := AHl.Attribute[i];
-    if attr = nil then Continue;
-    StyleForScope(attr.StoredName, fg, ital, has);
+    if AHl.Attribute[i] = nil then Continue;
+    StyleForScope(AHl.Attribute[i].StoredName, fg, ital, has);
     if has then
     begin
-      attr.Foreground := fg;
-      if ital then attr.Style := attr.Style + [fsItalic];
+      AHl.Attribute[i].Foreground := fg;
+      if ital then AHl.Attribute[i].Style := AHl.Attribute[i].Style + [fsItalic];
     end;
   end;
 end;
@@ -234,6 +237,14 @@ begin
   Result := -1;
   for i := 0 to High(Defs) do
     if SameText(Defs[i].Display, AName) then Exit(i);
+end;
+
+function EditorHl(ASyn: TSynEdit): TSynCustomHighlighter;
+begin
+  if ASyn.Highlighter is TSynCustomHighlighter then
+    Result := TSynCustomHighlighter(ASyn.Highlighter)
+  else
+    Result := nil;
 end;
 
 function LanguageLabel(AHl: TSynCustomHighlighter): string;

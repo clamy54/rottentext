@@ -46,6 +46,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Cache des installeurs FPC et Lazarus
         uses: actions/cache@v4
         with:
@@ -120,45 +122,19 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Cache des paquets FPC et Lazarus
         uses: actions/cache@v4
         with:
-          path: ~/laz-dl
-          key: laz-linux-amd64-4.8-fpc-3.2.2
-      - name: Installer Lazarus 4.8
-        # plus setup-lazarus: il s'arrete a 4.4 et tire tout de SourceForge,
-        # qui bride les runners GitHub jusqu'au timeout. Les .deb officiels
-        # 4.8 viennent du miroir clamy54/lazarus-mirror, SourceForge en secours.
-        run: |
-          mirror="https://github.com/clamy54/lazarus-mirror/releases/download/lazarus-4.8-linux-amd64"
-          sf="https://sourceforge.net/projects/lazarus/files/Lazarus%20Linux%20amd64%20DEB/Lazarus%204.8"
-          dl="$HOME/laz-dl"; mkdir -p "$dl"
-          # somme SHA-256 pinnee: HTTPS protege le transport, pas le contenu
-          # d'un miroir remplace. Verifie aussi la copie du cache, qui etait
-          # acceptee sur le seul critere "fichier non vide".
-          sha_of() {
-            if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
-            else shasum -a 256 "$1" | awk '{print $1}'; fi
-          }
-          ok_sum() { [ "$(sha_of "$dl/$1")" = "$2" ]; }
-          fetch() {  # $1 nom du fichier, $2 sha256 attendu
-            [ -s "$dl/$1" ] && ok_sum "$1" "$2" && { echo "$1: depuis le cache"; return 0; }
-            if curl -fsSL --retry 3 -o "$dl/$1" "$mirror/$1" && ok_sum "$1" "$2"; then
-              echo "$1: depuis le miroir GitHub"; return 0
-            fi
-            echo "$1: miroir indisponible ou somme invalide, repli SourceForge" >&2
-            curl -fsSL --retry 3 -o "$dl/$1" "$sf/$1/download"
-            ok_sum "$1" "$2" || { echo "$1: SHA-256 inattendu" >&2; exit 1; }
-          }
-          fetch fpc-laz_3.2.2-210709_amd64.deb 92000f2b831184e153aab0c910f8ae9240450e5c6d76dc189cf53116ee501d83
-          fetch fpc-src_3.2.2-210709_amd64.deb 8c9e145d8056754a9ca39ce3e52e982b8e4816124984c5f542f2a874e721ad53
-          fetch lazarus-project_4.8.0-0_amd64.deb 401742cefb01ad99a628188034bf728fb5360d641ed2be5f91fb0ee183a301cd
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            "$dl/fpc-laz_3.2.2-210709_amd64.deb" \
-            "$dl/fpc-src_3.2.2-210709_amd64.deb" \
-            "$dl/lazarus-project_4.8.0-0_amd64.deb"
-          lazbuild --version
+          path: |
+            ~/laz-dl
+            ~/lazarus-trunk
+          key: laz-linux-amd64-trunk-39a5eec4-fpc-3.2.2
+      - name: Installer FPC et Lazarus trunk
+        # GTK3 demande Lazarus trunk: commit epingle, bati sur le runner (voir
+        # le script). Windows et macOS restent sur la 4.8.
+        run: bash .github/install-lazarus-linux.sh
       - name: Dependances d'empaquetage
         # dpkg-shlibdeps (dpkg-dev) pour les Depends, imagemagick pour les icones
         run: |
@@ -180,6 +156,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Cache de l'installeur Lazarus
         uses: actions/cache@v4
         with:

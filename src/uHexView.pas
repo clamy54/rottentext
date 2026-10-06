@@ -10,7 +10,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics, Dialogs, LCLType, Clipbrd,
-  uTheme, uSafeSave;
+  uTheme, uRtSafeSave, uRtMessage;
 
 const
   HEX_BPR = 16; // octets par rangee
@@ -162,7 +162,7 @@ begin
   DoubleBuffered := True;
   TabStop := True;
   Color := clEditorBg;
-  Font.Name := RTFontName;
+  Font.Name := RSUiFontName;
   Font.Size := 11;
   Font.Quality := fqCleartype;
   SetLength(FCache, CACHE_BLK);
@@ -620,7 +620,7 @@ begin
       FMarkOfs := -1;
       FMarkLen := 0;
       Invalidate;
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         Format('Saved %s, but reopening it failed (file locked?).' + LineEnding +
           'Use File > Revert File to reload it.', [AFileName]),
         mtWarning, [mbOK], 0);
@@ -773,7 +773,7 @@ begin
   selLen := hi - lo + 1;
   if selLen > MAX_COPY then
   begin
-    MessageDlg('RottenText',
+    RtMessageDlg('RottenText',
       Format('Selection too large to copy (%d bytes, max %d).', [selLen, MAX_COPY]),
       mtWarning, [mbOK], 0);
     Exit;

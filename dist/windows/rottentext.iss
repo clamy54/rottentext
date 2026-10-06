@@ -63,10 +63,10 @@ Name: "contextmenu"; Description: "Add to Explorer context menu"; GroupDescripti
 
 [Files]
 Source: "..\..\RottenText.exe"; DestDir: "{app}"; Flags: ignoreversion
-; donnees runtime : les loaders les cherchent A COTE de l'exe
-; (ExtractFilePath(ParamStr(0)) + 'syntax' / 'themes'), pas ailleurs.
+; donnees runtime : le loader les cherche A COTE de l'exe
+; (ExtractFilePath(ParamStr(0)) + 'syntax'), pas ailleurs. Les themes sont
+; dans l'exe.
 Source: "..\..\syntax\*"; DestDir: "{app}\syntax"; Flags: recursesubdirs createallsubdirs
-Source: "..\..\themes\*"; DestDir: "{app}\themes"; Flags: recursesubdirs createallsubdirs
 Source: "..\..\RottenText.ico"; DestDir: "{app}"
 ; licences : les polices Monaspace et JetBrains Mono sont COMPILEES DANS l'exe (RCDATA),
 ; donc l'OFL impose que son texte accompagne la distribution, binaire compris.

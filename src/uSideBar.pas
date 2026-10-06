@@ -239,15 +239,15 @@ begin
   FDirCache.Sorted := True;
   FDirCache.Duplicates := dupIgnore;
   FDirCache.CaseSensitive := False;
-  Font.Name := RTSideFont;
-  Font.Size := RTSideSize;
+  Font.Name := RSUiFontName;
+  Font.Size := RSTreeFontSize;
   Font.Quality := fqCleartype;
 end;
 
 procedure TSideBar.RefreshTheme;
 begin
-  Font.Name := RTSideFont;
-  Font.Size := RTSideSize;
+  Font.Name := RSUiFontName;
+  Font.Size := RSTreeFontSize;
   Invalidate;
 end;
 

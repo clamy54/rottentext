@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, StdCtrls, Forms,
-  SynEdit, SynEditTypes, SynEditMiscClasses, LazSynEditText, uTheme;
+  SynEdit, SynEditTypes, SynEditMiscClasses, LazSynEditText, uTheme, uEditorTheme;
 
 type
   // Second SynEdit minuscule en lecture seule, miroir de l'editeur actif.
@@ -120,7 +120,7 @@ begin
   FMini.MouseSelActions.Clear;
   ApplyEditorTheme(FMini);
   // ApplyEditorTheme pose la taille de l'editeur: la mini la reforce a 2
-  FMini.Font.Name := RTEditorFont;
+  FMini.Font.Name := RSEditorFontName;
   FMini.Font.Size := 2;
   FMini.RightEdge := 0;
   FMini.OnSpecialLineMarkup := @MiniSpecialLine;
@@ -139,7 +139,7 @@ begin
   Color := clEditorBg;
   FMini.Color := clEditorBg;
   ApplyEditorTheme(FMini);
-  FMini.Font.Name := RTEditorFont;
+  FMini.Font.Name := RSEditorFontName;
   FMini.Font.Size := 2;
   FMini.Invalidate;
   Invalidate;

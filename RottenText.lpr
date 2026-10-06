@@ -48,7 +48,11 @@ begin
   if ForwardAllToRunningInstance then Exit;
   Application.Scaled := True;
   Application.Initialize;
-  LoadEmbeddedFonts;
+  EmbeddedFontManager.RegisterFonts;
+  ApplyDefaultFonts;
+  // un editeur de texte: plage de taille plus large que celle de l'interface
+  EditorFontSizeMin := 6;
+  EditorFontSizeMax := 72;
   SettingsLoad; // reglages + theme persistes (apres les polices, avant la
                 // fenetre: les controles lisent les bonnes valeurs a la
                 // creation); theme disparu ou 1er lancement = theme par defaut

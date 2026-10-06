@@ -28,7 +28,7 @@ function RecentDisplay(AIndex: Integer): string; // assaini (libelle de menu)
 implementation
 
 uses
-  fpjson, jsonparser, uJsonSafe, uSafeSave;
+  fpjson, jsonparser, uJsonSafe, uRtSafeSave;
 
 const
   MAX_FILE_BYTES = 64 * 1024;

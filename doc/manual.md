@@ -73,7 +73,7 @@ rebuild, or they leave with the process.
 **macOS, one extra step.** Compiling produces a bare binary, which macOS treats
 with the suspicion it deserves. Run `scripts/make-app.sh` (also takes `--release`)
 to get the full pipeline: build, wrap it in a `RottenText.app` bundle with the
-theme and syntax data inside, generate the icon, write the `Info.plist`, and
+syntax data inside, generate the icon, write the `Info.plist`, and
 ad-hoc sign it so Apple Silicon lets it run at all. The signature is ad-hoc, not
 notarized, so if you copy the `.app` to another Mac, Gatekeeper will scream. On the
 machine that built it, it just runs.
@@ -121,9 +121,9 @@ The part that opens files. Kept deliberately boring. Highlights:
   Big files skip automatic highlighting on purpose, because tokenizing a 156 MB
   log to make it pretty is not a feature, it is a denial of service against
   yourself.
-- **Themes**: a dozen of them, switchable live. The menu bar stays light on every
-  theme, on purpose. If it clashes with your dark theme, that's a deliberate
-  choice, not a bug to file.
+- **Themes**: nineteen of them, built into the binary and switchable live. The
+  menu bar follows the theme. Your own themes are JSON files dropped in a
+  `themes` folder inside the configuration directory.
 - **Editor font** (`View > Font...`): family among the embedded ones (the five
   Monaspace flavours and JetBrains Mono Nerd Font) and size. Saved in the
   preferences, wins over the theme's font; "Theme Default" hands control back

@@ -22,13 +22,13 @@ implementation
 uses
   SysUtils, Graphics, Controls, Forms, ExtCtrls, StdCtrls, LCLType, Dialogs,
   SynEdit, SynEditTypes, SynGutterLineNumber, SynEditMiscClasses,
-  uTheme, uDiff;
+  uTheme, uEditorTheme, uThemedSplitter, uRtMessage, uDiff;
 
 type
   TDiffViewForm = class(TForm)
   public
     FLeft, FRight: TSynEdit;
-    FSplit: TSplitter;
+    FSplit: TThemedSplitter;
     FRows: TDiffRows;
     FRightOrig: TStringList;  // droite d'origine (sans filler), base du re-diff
     FDiffBg: TColor;
@@ -346,7 +346,7 @@ begin
     else
       msg := 'The left side was edited. Integrate the changes into the ' +
         'original document?';
-    case MessageDlg('RottenText', msg, mtConfirmation,
+    case RtMessageDlg('RottenText', msg, mtConfirmation,
       [mbYes, mbNo, mbCancel], 0) of
       mrYes: FIntegrate := True;
       mrNo:  FIntegrate := False;
@@ -456,6 +456,7 @@ begin
     lbl.Font.Color := clStatusText;
     lbl.Caption := summary + '        [' + ALeftName + ' - editable]   vs   [' +
       ARightName + ']        (Esc to close)';
+    ApplyUiFont(info);
 
     f.FLeft := TSynEdit.Create(f);
     f.FLeft.Parent := f;
@@ -463,12 +464,11 @@ begin
     f.FLeft.Width := f.ClientWidth div 2;
     f.FLeft.ScrollBars := ssHorizontal; // une seule barre verticale, a droite
 
-    f.FSplit := TSplitter.Create(f);
+    f.FSplit := TThemedSplitter.Create(f);
     f.FSplit.Parent := f;
     f.FSplit.Align := alLeft;
     f.FSplit.Left := f.FLeft.Width + 1;
     f.FSplit.Width := 3;
-    f.FSplit.Color := clBorder;
     f.FSplit.ResizeStyle := rsUpdate;
     f.FSplit.OnMoved := @f.SplitMoved;
 

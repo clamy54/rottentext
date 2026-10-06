@@ -195,7 +195,7 @@ function ActionModalActive: Boolean;
 implementation
 
 uses
-  uAbout, uMain; // implementation seulement: uMain nous use en interface
+  uRtMessage, uAbout, uMain; // implementation seulement: uMain nous use en interface
 
 var
   FActionModal: Integer = 0;
@@ -273,7 +273,7 @@ begin
   if AOnSel then big := (e.BlockEnd.Y - e.BlockBegin.Y + 1) > BIG_LINES
   else big := True;
   if big then
-    Result := MessageDlg('RottenText',
+    Result := RtMessageDlg('RottenText',
       'Process this large amount of text? This can take a while.',
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes;
 end;
@@ -293,7 +293,7 @@ begin
     SysUtils.FindClose(sr);
   end;
   if sz > BIG_FILE then
-    Result := MessageDlg('RottenText',
+    Result := RtMessageDlg('RottenText',
       Format('That file is %d MB. Load and parse it anyway?', [sz div (1024 * 1024)]),
       mtConfirmation, [mbYes, mbCancel], 0) = mrYes;
 end;
@@ -356,7 +356,7 @@ begin
     end;
   except
     on E: Exception do
-      MessageDlg('RottenText', 'Cannot open new window: ' + E.Message,
+      RtMessageDlg('RottenText', 'Cannot open new window: ' + E.Message,
         mtError, [mbOK], 0);
   end;
 end;
@@ -428,10 +428,10 @@ begin
     end;
     try
       PrintDocument(doc.DisplayName, doc.View.Syn.Lines,
-        doc.View.Syn.Highlighter, RTTabWidth);
+        EditorHl(doc.View.Syn), RTTabWidth);
     except
       on E: Exception do
-        MessageDlg('RottenText', 'Print failed: ' + E.Message, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', 'Print failed: ' + E.Message, mtError, [mbOK], 0);
     end;
   finally
     EndActionModal;
@@ -498,11 +498,11 @@ begin
   if (FMgr.ActiveDoc = nil) or not FMgr.ActiveDoc.IsHex then Exit;
   // InputQuery et pas InputBox: InputBox rend le DEFAUT a l'annulation
   s := IntToHex(FMgr.ActiveDoc.HexView.CaretOfs, 1);
-  if not InputQuery('RottenText', 'Go to offset (hex):', s) then Exit;
+  if not RtInputQuery('RottenText', 'Go to offset (hex):', s) then Exit;
   if Trim(s) = '' then Exit;
   if not ParseHexOffset(s, ofs) then
   begin
-    MessageDlg('RottenText', Format('Invalid offset: %s', [s]),
+    RtMessageDlg('RottenText', Format('Invalid offset: %s', [s]),
       mtWarning, [mbOK], 0);
     Exit;
   end;
@@ -760,7 +760,7 @@ var
 begin
   e := Ed;
   if e = nil then Exit;
-  if not CommentTokensFor(e.Highlighter, lc, bo, bc) then Exit;
+  if not CommentTokensFor(EditorHl(e), lc, bo, bc) then Exit;
   // un SetTextBetweenPoints par ligne dans un seul undo block: Ctrl+A sur un
   // gros fichier tiendrait des millions de lignes
   if e.SelAvail and not ConfirmLargeText(True) then Exit;
@@ -824,7 +824,7 @@ begin
   if l2 - l1 < 1 then Exit;
   if (FMgr.ActiveDoc <> nil) and FMgr.ActiveDoc.LargeFile and
      (l2 - l1 + 1 > BIG_SORT_LINES) then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         Format('Sort %d lines? This can take a while.', [l2 - l1 + 1]),
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
   if e.CanFocus then e.SetFocus;
@@ -867,8 +867,8 @@ begin
   if not ConfirmLargeText(e.SelAvail) then Exit;
   fn := '';
   if FMgr.ActiveDoc <> nil then fn := FMgr.ActiveDoc.FileName;
-  if IsMakefile(LanguageLabel(e.Highlighter), fn) then
-    if MessageDlg('RottenText',
+  if IsMakefile(LanguageLabel(EditorHl(e)), fn) then
+    if RtMessageDlg('RottenText',
         'A Makefile needs real tabs to start a recipe line.' + LineEnding +
         'Converting them to spaces will break it. Continue?',
         mtWarning, [mbYes, mbCancel], 0) <> mrYes then Exit;
@@ -882,7 +882,7 @@ begin
       e.LogicalToPhysicalPos(e.BlockBegin).X - 1);
     if res = src then
     begin
-      MessageDlg('RottenText', 'No tabs in the selection.',
+      RtMessageDlg('RottenText', 'No tabs in the selection.',
         mtInformation, [mbOK], 0);
       Exit;
     end;
@@ -894,7 +894,7 @@ begin
     res := ExpandTabs(src, RTTabWidth);
     if res = src then
     begin
-      MessageDlg('RottenText', 'No tabs in this document.',
+      RtMessageDlg('RottenText', 'No tabs in this document.',
         mtInformation, [mbOK], 0);
       Exit;
     end;
@@ -1034,9 +1034,9 @@ end;
 procedure TAppActions.ViewTheme(Sender: TObject);
 begin
   if not (Sender is TMenuItem) then Exit;
-  if not ApplyTheme(TMenuItem(Sender).Tag) then
+  if not ApplyThemeIndex(TMenuItem(Sender).Tag) then
   begin
-    MessageDlg('RottenText', 'Cannot load this theme (missing or malformed file).',
+    RtMessageDlg('RottenText', 'Cannot load this theme (missing or malformed file).',
       mtWarning, [mbOK], 0);
     Exit;
   end;
@@ -1162,7 +1162,7 @@ begin
   if e = nil then Exit;
   if not e.SelAvail then
   begin
-    MessageDlg('RottenText', 'Select the area to fill first.',
+    RtMessageDlg('RottenText', 'Select the area to fill first.',
       mtInformation, [mbOK], 0);
     Exit;
   end;
@@ -1316,7 +1316,7 @@ begin
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -1350,7 +1350,7 @@ begin
       except
         on ex: Exception do
         begin
-          MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
           Exit;
         end;
       end;
@@ -1425,7 +1425,7 @@ begin
   end;
   h := HashText(ohSHA256, src);
   lc := ''; bo := ''; bc := '';
-  CommentTokensFor(e.Highlighter, lc, bo, bc);
+  CommentTokensFor(EditorHl(e), lc, bo, bc);
   if lc <> '' then
     comment := lc + ' sha256 (' + what + '): ' + h
   else if bo <> '' then
@@ -1455,7 +1455,7 @@ begin
       53:
         begin
           pfx := 'rt';
-          if not InputQuery('API Key', 'Prefix (e.g. rt, sk):', pfx) then Exit;
+          if not RtInputQuery('API Key', 'Prefix (e.g. rt, sk):', pfx) then Exit;
           if Trim(pfx) = '' then Exit;
           res := GenApiKey(pfx, 18);
         end;
@@ -1464,7 +1464,7 @@ begin
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -1482,12 +1482,12 @@ begin
   // InputQuery et pas InputBox: InputBox rend le DEFAUT a l'annulation, donc
   // Cancel generait un mot de passe et ecraserait le presse-papiers
   sLen := '20';
-  if not InputQuery('RottenText', 'Password length:', sLen) then Exit;
+  if not RtInputQuery('RottenText', 'Password length:', sLen) then Exit;
   if Trim(sLen) = '' then Exit;
   n := StrToIntDef(Trim(sLen), 0);
   if (n < 1) or (n > 4096) then
   begin
-    MessageDlg('RottenText', 'Length must be between 1 and 4096.', mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', 'Length must be between 1 and 4096.', mtError, [mbOK], 0);
     Exit;
   end;
   try
@@ -1495,7 +1495,7 @@ begin
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -1511,7 +1511,7 @@ begin
   else
   begin
     Clipboard.AsText := res;
-    MessageDlg('RottenText',
+    RtMessageDlg('RottenText',
       Format('A %d-character password was copied to the clipboard.', [n]),
       mtInformation, [mbOK], 0);
   end;
@@ -1525,11 +1525,11 @@ var
 begin
   e := Ed;
   if (e = nil) or not (Sender is TMenuItem) then Exit;
-  user := Trim(InputBox('htpasswd', 'Username:', ''));
+  user := Trim(RtInputBox('htpasswd', 'Username:', ''));
   if user = '' then Exit;
   if Pos(':', user) > 0 then
   begin
-    MessageDlg('RottenText', 'Username cannot contain '':''.', mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', 'Username cannot contain '':''.', mtError, [mbOK], 0);
     Exit;
   end;
   pw := '';
@@ -1544,7 +1544,7 @@ begin
     on ex: Exception do
     begin
       WipeSecret(pw);
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -1563,7 +1563,7 @@ begin
   AValue := '';
   if AScheme = lpsSASL then
   begin
-    id := InputBox('LDAP userPassword (SASL)', 'SASL identity (uid@REALM or DN):', '');
+    id := RtInputBox('LDAP userPassword (SASL)', 'SASL identity (uid@REALM or DN):', '');
     if Trim(id) = '' then Exit;
     AValue := LdapUserPassword(lpsSASL, id);
     Result := True;
@@ -1576,7 +1576,7 @@ begin
     Result := True;
   except
     on ex: Exception do
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
   end;
   WipeSecret(pw);
 end;
@@ -1624,7 +1624,7 @@ begin
   if not AskFields('LDIF Root (domain)',
     ['Base DN', 'Organization (o)', 'Description'],
     ['dc=example,dc=org', '', ''], v) then Exit;
-  if v[0] = '' then begin MessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
+  if v[0] = '' then begin RtMessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
   if e.CanFocus then e.SetFocus;
   e.InsertTextAtCaret(BuildLdifRoot(v[0], v[1], v[2]));
 end;
@@ -1639,7 +1639,7 @@ begin
   if not AskFields('LDIF Organizational Unit',
     ['DN', 'Description'],
     ['ou=people,dc=example,dc=org', ''], v) then Exit;
-  if v[0] = '' then begin MessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
+  if v[0] = '' then begin RtMessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
   if e.CanFocus then e.SetFocus;
   e.InsertTextAtCaret(BuildLdifOU(v[0], v[1]));
 end;
@@ -1654,7 +1654,7 @@ begin
   if not AskFields('LDIF Group (posixGroup)',
     ['DN', 'gidNumber', 'Members (uid, space-sep)', 'Description'],
     ['cn=admins,ou=groups,dc=example,dc=org', '10000', '', ''], v) then Exit;
-  if v[0] = '' then begin MessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
+  if v[0] = '' then begin RtMessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
   if e.CanFocus then e.SetFocus;
   e.InsertTextAtCaret(BuildLdifGroup(v[0], v[1], v[2], v[3]));
 end;
@@ -1669,8 +1669,8 @@ begin
   if not AskFields('LDIF Group (groupOfNames)',
     ['DN', 'Members (DN, ;-separated)', 'Description'],
     ['cn=app-admins,ou=groups,dc=example,dc=org', '', ''], v) then Exit;
-  if v[0] = '' then begin MessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
-  if v[1] = '' then begin MessageDlg('RottenText', 'groupOfNames requires at least one member (DN)', mtWarning, [mbOK], 0); Exit; end;
+  if v[0] = '' then begin RtMessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
+  if v[1] = '' then begin RtMessageDlg('RottenText', 'groupOfNames requires at least one member (DN)', mtWarning, [mbOK], 0); Exit; end;
   if e.CanFocus then e.SetFocus;
   e.InsertTextAtCaret(BuildLdifGroupOfNames(v[0], v[1], v[2]));
 end;
@@ -1686,7 +1686,7 @@ begin
   if not AskFields('LDIF Service / Bind Account',
     ['DN', 'Description'],
     ['uid=readonly,ou=services,dc=example,dc=org', 'bind account'], v) then Exit;
-  if v[0] = '' then begin MessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
+  if v[0] = '' then begin RtMessageDlg('RottenText', 'DN is required', mtWarning, [mbOK], 0); Exit; end;
   hashed := '';
   pw := '';
   // OK avec un champ vide = compte account sans mot de passe, c'est valide
@@ -1699,7 +1699,7 @@ begin
       on ex: Exception do
       begin
         WipeSecret(pw);
-        MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
         Exit;
       end;
     end;
@@ -1728,7 +1728,7 @@ begin
     else
       big := True;
   if big then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         'Process this large amount of text? This can take a while.',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
   if onSel then src := e.SelText else src := e.Lines.Text;
@@ -1736,24 +1736,24 @@ begin
     0:
       begin
         if JsonValidate(src, err) then
-          MessageDlg('RottenText', 'Valid JSON.', mtInformation, [mbOK], 0)
+          RtMessageDlg('RottenText', 'Valid JSON.', mtInformation, [mbOK], 0)
         else
-          MessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
         Exit;
       end;
     1: if not JsonFormat(src, res, err) then
        begin
-         MessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
+         RtMessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
          Exit;
        end;
     2: if not JsonMinify(src, res, err) then
        begin
-         MessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
+         RtMessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
          Exit;
        end;
     else if not JsonSortKeys(src, res, err) then
        begin
-         MessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
+         RtMessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0);
          Exit;
        end;
   end;
@@ -1783,7 +1783,7 @@ begin
     if onSel then big := (e.BlockEnd.Y - e.BlockBegin.Y + 1) > BIG_XML_LINES
     else big := True;
   if big then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         'Process this large amount of text? This can take a while.',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
   if onSel then src := e.SelText else src := e.Lines.Text;
@@ -1791,14 +1791,14 @@ begin
     0:
       begin
         if XmlValidate(src, err) then
-          MessageDlg('RottenText', 'Well-formed XML.', mtInformation, [mbOK], 0)
+          RtMessageDlg('RottenText', 'Well-formed XML.', mtInformation, [mbOK], 0)
         else
-          MessageDlg('RottenText', 'Invalid XML:'#10 + err, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', 'Invalid XML:'#10 + err, mtError, [mbOK], 0);
         Exit;
       end;
     else if not XmlFormat(src, res, err) then
       begin
-        MessageDlg('RottenText', 'Invalid XML:'#10 + err, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', 'Invalid XML:'#10 + err, mtError, [mbOK], 0);
         Exit;
       end;
   end;
@@ -1832,14 +1832,14 @@ begin
     if onSel then big := (e.BlockEnd.Y - e.BlockBegin.Y + 1) > BIG_YAML_LINES
     else big := True;
   if big then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         'Process this large amount of text? This can take a while.',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
   if onSel then src := e.SelText else src := e.Lines.Text;
 
   // le tri passe par l'emetteur: commentaires et mise en forme d'origine perdus
   if TMenuItem(Sender).Tag = 2 then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         'Sort keys rewrites the document: comments and original formatting are lost (undo available). Continue?',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
 
@@ -1848,7 +1848,7 @@ begin
   docs := YamlParseDocs(src, err);
   if err <> '' then
   begin
-    MessageDlg('RottenText', 'Invalid YAML:'#10 + err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', 'Invalid YAML:'#10 + err, mtError, [mbOK], 0);
     Exit;
   end;
   try
@@ -1856,11 +1856,11 @@ begin
       0:
         begin
           if Length(docs) > 1 then
-            MessageDlg('RottenText', Format(
+            RtMessageDlg('RottenText', Format(
               'Well-formed YAML (block subset), %d documents.', [Length(docs)]),
               mtInformation, [mbOK], 0)
           else
-            MessageDlg('RottenText', 'Well-formed YAML (block subset).', mtInformation, [mbOK], 0);
+            RtMessageDlg('RottenText', 'Well-formed YAML (block subset).', mtInformation, [mbOK], 0);
           Exit;
         end;
       1:
@@ -1887,7 +1887,7 @@ begin
           for i := 0 to High(docs) do
             if YamlHasAlias(docs[i]) then
             begin
-              MessageDlg('RottenText', 'This document uses anchors and aliases: '
+              RtMessageDlg('RottenText', 'This document uses anchors and aliases: '
                 + 'sorting could move an alias before its anchor.',
                 mtWarning, [mbOK], 0);
               Exit;
@@ -1918,7 +1918,7 @@ begin
   a := YamlParse(e.Lines.Text, err);
   if a = nil then
   begin
-    MessageDlg('RottenText', 'Current buffer is not valid YAML:'#10 + err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', 'Current buffer is not valid YAML:'#10 + err, mtError, [mbOK], 0);
     Exit;
   end;
   b := nil;
@@ -1936,7 +1936,7 @@ begin
         except
           on ex: Exception do
           begin
-            MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+            RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
             Exit;
           end;
         end;
@@ -1946,7 +1946,7 @@ begin
       end;
       if b = nil then
       begin
-        MessageDlg('RottenText', 'Chosen file is not valid YAML:'#10 + err, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', 'Chosen file is not valid YAML:'#10 + err, mtError, [mbOK], 0);
         Exit;
       end;
       report := YamlValuesDiff(a, b, '(current buffer)', ExtractFileName(dlg.FileName));
@@ -1983,18 +1983,18 @@ begin
         if TMenuItem(Sender).Tag = 0 then
         begin
           name := 'my-secret';
-          if not InputQuery('Kubernetes Secret', 'Secret name:', name) then Exit;
+          if not RtInputQuery('Kubernetes Secret', 'Secret name:', name) then Exit;
         end
         else
         begin
           name := 'my-configmap';
-          if not InputQuery('Kubernetes ConfigMap', 'ConfigMap name:', name) then Exit;
+          if not RtInputQuery('Kubernetes ConfigMap', 'ConfigMap name:', name) then Exit;
         end;
         if Trim(name) = '' then Exit;
         // un nom hors RFC 1123 casserait le YAML ou serait refuse par k8s
         if not ValidK8sName(Trim(name)) then
         begin
-          MessageDlg('RottenText', '"' + Trim(name) + '" is not a valid'
+          RtMessageDlg('RottenText', '"' + Trim(name) + '" is not a valid'
             + ' Kubernetes name (lowercase letters, digits, "-" and ".",'
             + ' must start and end alphanumeric).', mtError, [mbOK], 0);
           Exit;
@@ -2015,7 +2015,7 @@ begin
         res := SecretDecode(src, err);
         if err <> '' then
         begin
-          MessageDlg('RottenText', 'Cannot decode Secret:'#10 + err, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', 'Cannot decode Secret:'#10 + err, mtError, [mbOK], 0);
           Exit;
         end;
       end;
@@ -2024,7 +2024,7 @@ begin
       res := ConfigMapDecode(src, err);
       if err <> '' then
       begin
-        MessageDlg('RottenText', 'Cannot decode ConfigMap:'#10 + err, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', 'Cannot decode ConfigMap:'#10 + err, mtError, [mbOK], 0);
         Exit;
       end;
     end;
@@ -2073,9 +2073,9 @@ begin
   if err <> '' then
   begin
     if tag = 4 then
-      MessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0)
+      RtMessageDlg('RottenText', 'Invalid JSON:'#10 + err, mtError, [mbOK], 0)
     else
-      MessageDlg('RottenText', 'Invalid YAML:'#10 + err, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', 'Invalid YAML:'#10 + err, mtError, [mbOK], 0);
     Exit;
   end;
 
@@ -2115,12 +2115,12 @@ begin
     curTag := ImageTagOnLine(ln);
     if (curTag = '') and (ComposeRetagLine(ln, 'x') = ln) then
     begin
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         'Put the cursor on an "image:" line first.', mtInformation, [mbOK], 0);
       Exit;
     end;
     newTag := curTag;
-    if not InputQuery('Set Image Tag', 'New tag:', newTag) then Exit;
+    if not RtInputQuery('Set Image Tag', 'New tag:', newTag) then Exit;
     newTag := Trim(newTag);
     if newTag = '' then Exit;
     res := ComposeRetagLine(ln, newTag);
@@ -2138,7 +2138,7 @@ begin
     res := ComposeEnvDotenv(src, err);
   if err <> '' then
   begin
-    MessageDlg('RottenText', err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', err, mtError, [mbOK], 0);
     Exit;
   end;
   d := FMgr.NewFile;
@@ -2166,12 +2166,12 @@ begin
     // le sentinel 'x' du test de retag
     if (curTag = '') and (QuadletRetagLine(ln, 'x') = ln) then
     begin
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         'Put the cursor on an "Image=" line first.', mtInformation, [mbOK], 0);
       Exit;
     end;
     newTag := curTag;
-    if not InputQuery('Set Image Tag', 'New tag:', newTag) then Exit;
+    if not RtInputQuery('Set Image Tag', 'New tag:', newTag) then Exit;
     newTag := Trim(newTag);
     if newTag = '' then Exit;
     res := QuadletRetagLine(ln, newTag);
@@ -2189,7 +2189,7 @@ begin
     res := QuadletEnvDotenv(src, err);
   if err <> '' then
   begin
-    MessageDlg('RottenText', err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', err, mtError, [mbOK], 0);
     Exit;
   end;
   d := FMgr.NewFile;
@@ -2216,9 +2216,9 @@ begin
       begin
         res := IniValidate(src);
         if Copy(res, 1, 6) = 'INI OK' then
-          MessageDlg('RottenText', res, mtInformation, [mbOK], 0)
+          RtMessageDlg('RottenText', res, mtInformation, [mbOK], 0)
         else
-          MessageDlg('RottenText', res, mtWarning, [mbOK], 0);
+          RtMessageDlg('RottenText', res, mtWarning, [mbOK], 0);
       end;
     1:
       begin
@@ -2256,9 +2256,9 @@ begin
       begin
         res := TomlValidate(src);
         if Copy(res, 1, 7) = 'TOML OK' then
-          MessageDlg('RottenText', res, mtInformation, [mbOK], 0)
+          RtMessageDlg('RottenText', res, mtInformation, [mbOK], 0)
         else
-          MessageDlg('RottenText', res, mtWarning, [mbOK], 0);
+          RtMessageDlg('RottenText', res, mtWarning, [mbOK], 0);
       end;
     1:
       begin
@@ -2295,7 +2295,7 @@ begin
   end;
   if d.Eol = k then
   begin
-    MessageDlg('RottenText', 'Line endings are already ' + EolName(k) + '.',
+    RtMessageDlg('RottenText', 'Line endings are already ' + EolName(k) + '.',
       mtInformation, [mbOK], 0);
     Exit;
   end;
@@ -2319,14 +2319,14 @@ begin
     src := '';
   if src = '' then
   begin
-    src := Trim(InputBox('RottenText',
+    src := Trim(RtInputBox('RottenText',
       'Cron expression, crontab line or OnCalendar= value:', ''));
     if src = '' then Exit;
   end;
   res := ScheduleReport(src, Now, 10, err);
   if res = '' then
   begin
-    MessageDlg('RottenText', err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', err, mtError, [mbOK], 0);
     Exit;
   end;
   d := FMgr.NewFile;
@@ -2366,7 +2366,7 @@ begin
             except
               on ex: Exception do
               begin
-                MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+                RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
                 Exit;
               end;
             end;
@@ -2407,7 +2407,7 @@ begin
   end;
   if err <> '' then
   begin
-    MessageDlg('RottenText', err, mtError, [mbOK], 0);
+    RtMessageDlg('RottenText', err, mtError, [mbOK], 0);
     Exit;
   end;
   d := FMgr.NewFile;
@@ -2431,12 +2431,12 @@ begin
     path := RenderValuesPath(e.Lines, e.CaretY - 1);
     if (path = '') or (path = '.Values.') then
     begin
-      MessageDlg('RottenText', 'Place the cursor on a key line first.',
+      RtMessageDlg('RottenText', 'Place the cursor on a key line first.',
         mtInformation, [mbOK], 0);
       Exit;
     end;
     Clipboard.AsText := path;
-    MessageDlg('RottenText', 'Copied to clipboard:'#10 + path, mtInformation, [mbOK], 0);
+    RtMessageDlg('RottenText', 'Copied to clipboard:'#10 + path, mtInformation, [mbOK], 0);
     Exit;
   end;
 
@@ -2479,7 +2479,7 @@ begin
       except
         on ex: Exception do
         begin
-          MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
           Exit;
         end;
       end;
@@ -2489,7 +2489,7 @@ begin
     end;
     if vals = nil then
     begin
-      MessageDlg('RottenText', 'Chosen values file is not valid YAML:'#10 + err,
+      RtMessageDlg('RottenText', 'Chosen values file is not valid YAML:'#10 + err,
         mtError, [mbOK], 0);
       Exit;
     end;
@@ -2532,7 +2532,7 @@ begin
     try
       if fileCount = 0 then
       begin
-        MessageDlg('RottenText',
+        RtMessageDlg('RottenText',
           'No template files (.yaml/.yml/.tpl/.txt) found in that folder.',
           mtInformation, [mbOK], 0);
         Exit;
@@ -2558,7 +2558,7 @@ begin
             except
               on ex: Exception do
               begin
-                MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+                RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
                 Exit;
               end;
             end;
@@ -2568,7 +2568,7 @@ begin
           end;
           if vals = nil then
           begin
-            MessageDlg('RottenText', 'Chosen values file is not valid YAML:'#10 + err,
+            RtMessageDlg('RottenText', 'Chosen values file is not valid YAML:'#10 + err,
               mtError, [mbOK], 0);
             Exit;
           end;
@@ -2624,7 +2624,7 @@ begin
   res := HelmQuoteLine(ln);
   if res = ln then
   begin
-    MessageDlg('RottenText', 'No {{ ... }} expression to quote on this line.',
+    RtMessageDlg('RottenText', 'No {{ ... }} expression to quote on this line.',
       mtInformation, [mbOK], 0);
     Exit;
   end;
@@ -2646,11 +2646,11 @@ begin
   path := DefaultValuesPath(ln);
   if path = '' then
   begin
-    MessageDlg('RottenText', 'Place the cursor on a key line first.',
+    RtMessageDlg('RottenText', 'Place the cursor on a key line first.',
       mtInformation, [mbOK], 0);
     Exit;
   end;
-  if not InputQuery('Value to toYaml | nindent', '.Values path:', path) then Exit;
+  if not RtInputQuery('Value to toYaml | nindent', '.Values path:', path) then Exit;
   path := Trim(path);
   if path = '' then Exit;
   block := HelmToYamlLine(ln, path);
@@ -2676,14 +2676,14 @@ begin
     e.LogicalCaretXY := e.BlockEnd;
   end
   else
-    src := InputBox('IP / CIDR Calculator', 'Address (a.b.c.d/n or IPv6/n):', '');
+    src := RtInputBox('IP / CIDR Calculator', 'Address (a.b.c.d/n or IPv6/n):', '');
   if Trim(src) = '' then Exit;
   try
     report := CidrReport(src);   // ':' dans l'entree = IPv6
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -2708,13 +2708,13 @@ begin
     e.LogicalCaretXY := e.BlockEnd;
   end
   else
-    src := InputBox('Timestamp Converter',
+    src := RtInputBox('Timestamp Converter',
       'Timestamp (unix / ISO 8601 / Apache / syslog):', '');
   if Trim(src) = '' then Exit;
   report := TimestampReport(src);
   if report = '' then
   begin
-    MessageDlg('RottenText', 'No timestamp recognized.', mtInformation, [mbOK], 0);
+    RtMessageDlg('RottenText', 'No timestamp recognized.', mtInformation, [mbOK], 0);
     Exit;
   end;
   if e.CanFocus then e.SetFocus;
@@ -2732,14 +2732,14 @@ begin
   e := Ed;
   if e = nil then Exit;
   if e.SelAvail then src := e.SelText
-  else src := InputBox('JWT Inspector', 'Token:', '');
+  else src := RtInputBox('JWT Inspector', 'Token:', '');
   if Trim(src) = '' then Exit;
   try
     report := JwtDecode(src);
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -2763,7 +2763,7 @@ begin
   report := MailTraceReport(src);
   if report = '' then
   begin
-    MessageDlg('RottenText',
+    RtMessageDlg('RottenText',
       'No Received headers found. Paste raw mail headers or a full .eml.',
       mtInformation, [mbOK], 0);
     Exit;
@@ -2809,7 +2809,7 @@ begin
   end;
   if err <> '' then
   begin
-    MessageDlg('RottenText', 'Cannot inspect certificate:'#10 + err,
+    RtMessageDlg('RottenText', 'Cannot inspect certificate:'#10 + err,
       mtError, [mbOK], 0);
     Exit;
   end;
@@ -2830,14 +2830,14 @@ begin
   if TMenuItem(Sender).Tag = 1 then
   begin
     src := '022';
-    if not InputQuery('umask Calculator', 'umask (octal, e.g. 022):', src) then Exit;
+    if not RtInputQuery('umask Calculator', 'umask (octal, e.g. 022):', src) then Exit;
     if Trim(src) = '' then Exit;
     try
       res := UmaskReport(src);
     except
       on ex: Exception do
       begin
-        MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+        RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
         Exit;
       end;
     end;
@@ -2847,14 +2847,14 @@ begin
   end;
   hadSel := e.SelAvail;
   if hadSel then src := e.SelText
-  else src := InputBox('Convert chmod Mode', 'Mode (750 or rwxr-x---):', '');
+  else src := RtInputBox('Convert chmod Mode', 'Mode (750 or rwxr-x---):', '');
   if Trim(src) = '' then Exit;
   try
     res := ChmodConvert(src);
   except
     on ex: Exception do
     begin
-      MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -2889,7 +2889,7 @@ begin
     if onSel then big := (e.BlockEnd.Y - e.BlockBegin.Y + 1) > BIG_EXTRACT_LINES
     else big := True;
   if big then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         'Scan this large amount of text? This can take a while.',
         mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
   if onSel then src := e.SelText else src := e.Lines.Text;
@@ -2963,7 +2963,7 @@ var
 
   procedure SourceGone;
   begin
-    MessageDlg('RottenText',
+    RtMessageDlg('RottenText',
       'The source document was closed while the diff was open.' + LineEnding +
       'Nothing was integrated.', mtWarning, [mbOK], 0);
   end;
@@ -3012,13 +3012,13 @@ begin
       except
         on ex: Exception do
         begin
-          MessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+          RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
           Exit;
         end;
       end;
       // meme grammaire que le doc source: coloration gardee sous la teinte de diff
       if not ShowDiffView(a, b, leftName, ExtractFileName(dlg.FileName),
-        e.Highlighter, res) then Exit;
+        EditorHl(e), res) then Exit;
     finally
       dlg.Free;
     end;
@@ -3044,7 +3044,7 @@ begin
     // texte source perime: le merge a ete calcule contre un texte qui n'existe
     // plus, on ne l'applique pas en silence
     if cur <> orig then
-      if MessageDlg('RottenText',
+      if RtMessageDlg('RottenText',
         'The document changed while the diff was open (external reload?).' +
         LineEnding + 'Overwrite the current text with the merged result anyway?',
         mtWarning, [mbYes, mbCancel], 0) <> mrYes then Exit;

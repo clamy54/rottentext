@@ -11,32 +11,8 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
       <Icon Value="0"/>
-      <Resources Count="25">
-        <Resource_0 FileName="fonts/MonaspaceNeonFrozen-Regular.ttf" Type="RCDATA" ResourceName="NEON_REGULAR"/>
-        <Resource_1 FileName="fonts/MonaspaceNeonFrozen-Bold.ttf" Type="RCDATA" ResourceName="NEON_BOLD"/>
-        <Resource_2 FileName="fonts/MonaspaceNeonFrozen-Italic.ttf" Type="RCDATA" ResourceName="NEON_ITALIC"/>
-        <Resource_3 FileName="fonts/MonaspaceNeonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="NEON_BOLDITALIC"/>
-        <Resource_4 FileName="fonts/MonaspaceArgonFrozen-Regular.ttf" Type="RCDATA" ResourceName="ARGON_REGULAR"/>
-        <Resource_5 FileName="fonts/MonaspaceArgonFrozen-Bold.ttf" Type="RCDATA" ResourceName="ARGON_BOLD"/>
-        <Resource_6 FileName="fonts/MonaspaceArgonFrozen-Italic.ttf" Type="RCDATA" ResourceName="ARGON_ITALIC"/>
-        <Resource_7 FileName="fonts/MonaspaceArgonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="ARGON_BOLDITALIC"/>
-        <Resource_8 FileName="fonts/MonaspaceXenonFrozen-Regular.ttf" Type="RCDATA" ResourceName="XENON_REGULAR"/>
-        <Resource_9 FileName="fonts/MonaspaceXenonFrozen-Bold.ttf" Type="RCDATA" ResourceName="XENON_BOLD"/>
-        <Resource_10 FileName="fonts/MonaspaceXenonFrozen-Italic.ttf" Type="RCDATA" ResourceName="XENON_ITALIC"/>
-        <Resource_11 FileName="fonts/MonaspaceXenonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="XENON_BOLDITALIC"/>
-        <Resource_12 FileName="fonts/MonaspaceRadonFrozen-Regular.ttf" Type="RCDATA" ResourceName="RADON_REGULAR"/>
-        <Resource_13 FileName="fonts/MonaspaceRadonFrozen-Bold.ttf" Type="RCDATA" ResourceName="RADON_BOLD"/>
-        <Resource_14 FileName="fonts/MonaspaceRadonFrozen-Italic.ttf" Type="RCDATA" ResourceName="RADON_ITALIC"/>
-        <Resource_15 FileName="fonts/MonaspaceRadonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="RADON_BOLDITALIC"/>
-        <Resource_16 FileName="fonts/MonaspaceKryptonFrozen-Regular.ttf" Type="RCDATA" ResourceName="KRYPTON_REGULAR"/>
-        <Resource_17 FileName="fonts/MonaspaceKryptonFrozen-Bold.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLD"/>
-        <Resource_18 FileName="fonts/MonaspaceKryptonFrozen-Italic.ttf" Type="RCDATA" ResourceName="KRYPTON_ITALIC"/>
-        <Resource_19 FileName="fonts/MonaspaceKryptonFrozen-BoldItalic.ttf" Type="RCDATA" ResourceName="KRYPTON_BOLDITALIC"/>
-        <Resource_20 FileName="fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_REGULAR"/>
-        <Resource_21 FileName="fonts/JetBrainsMonoNLNerdFontMono-Bold.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_BOLD"/>
-        <Resource_22 FileName="fonts/JetBrainsMonoNLNerdFontMono-Italic.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_ITALIC"/>
-        <Resource_23 FileName="fonts/JetBrainsMonoNLNerdFontMono-BoldItalic.ttf" Type="RCDATA" ResourceName="JETBRAINSMONO_BOLDITALIC"/>
-        <Resource_24 FileName="icons/rottentext-256.png" Type="RCDATA" ResourceName="APPICON_PNG"/>
+      <Resources Count="1">
+        <Resource_0 FileName="icons/rottentext-256.png" Type="RCDATA" ResourceName="APPICON_PNG"/>
       </Resources>
     </General>
     <BuildModes>
@@ -84,6 +60,10 @@ if TargetOS = &apos;darwin&apos; then
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="RottenUI"/>
+        <DefaultFilename Value="rottenui/rottenui.lpk" Prefer="True"/>
+      </Item>
+      <Item>
         <PackageName Value="Printer4Lazarus"/>
       </Item>
       <Item>
@@ -103,7 +83,7 @@ if TargetOS = &apos;darwin&apos; then
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/uTheme.pas"/>
+        <Filename Value="src/uEditorTheme.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -119,7 +99,7 @@ if TargetOS = &apos;darwin&apos; then
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/uTabBar.pas"/>
+        <Filename Value="src/uGroupTabs.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -127,15 +107,11 @@ if TargetOS = &apos;darwin&apos; then
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/uMenuBar.pas"/>
+        <Filename Value="src/uAppMenu.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src/uDarwinQuit.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src/uFontEmbed.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

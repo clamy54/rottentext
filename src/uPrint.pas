@@ -46,7 +46,6 @@ procedure PrintDocument(const ATitle: string; ALines: TStrings;
 var
   mx, my, w, h, lineH, charW, y, maxChars, page, col, i: Integer;
   tabRun: string;
-  attr: TSynHighlighterAttributes;
   c: TColor;
   ital: Boolean;
 
@@ -109,7 +108,7 @@ var
 begin
   Printer.BeginDoc;
   try
-    Printer.Canvas.Font.Name := RTFontName;
+    Printer.Canvas.Font.Name := RSUiFontName;
     Printer.Canvas.Font.Size := 10;
     mx := Printer.XDPI div 2;
     my := Printer.YDPI div 2;
@@ -136,11 +135,12 @@ begin
         AHighlighter.SetLine(ALines[i], i);
         while not AHighlighter.GetEol do
         begin
-          attr := AHighlighter.GetTokenAttribute;
-          if attr <> nil then
+          // pas de variable typee: la classe de l'attribut a change de nom
+          // entre Lazarus 4 et 5
+          if AHighlighter.GetTokenAttribute <> nil then
           begin
-            c := PrintFg(attr.Foreground);
-            ital := fsItalic in attr.Style;
+            c := PrintFg(AHighlighter.GetTokenAttribute.Foreground);
+            ital := fsItalic in AHighlighter.GetTokenAttribute.Style;
           end
           else
           begin

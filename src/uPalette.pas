@@ -2,14 +2,14 @@ unit uPalette;
 
 {$mode objfpc}{$H+}
 
-// Command palette. Les commandes sont collectees a l'ouverture en marchant les
-// popups de la menu bar: pas de registre de commandes a maintenir.
+// Command palette. Les commandes sont collectees a l'ouverture en marchant
+// l'arbre des menus (uAppMenu): pas de registre de commandes a maintenir.
 
 interface
 
 uses
   Classes, SysUtils, Controls, Graphics, StdCtrls, Menus, LCLType, LCLProc,
-  Types, uTheme, uFuzzy, uMenuBar;
+  Types, uTheme, uFuzzy, uAppMenu;
 
 type
   TPalCmd = record
@@ -53,7 +53,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
-    procedure OpenPalette(ABar: TRTMenuBar);
+    procedure OpenPalette(AMenu: TAppMenu);
     procedure ClosePalette;
     procedure RefreshTheme;
     property OnRestoreFocus: TNotifyEvent read FOnRestoreFocus write FOnRestoreFocus;
@@ -73,7 +73,7 @@ begin
   inherited Create(AOwner);
   Visible := False;
   Color := clSideBg;
-  Font.Name := RTFontName;
+  Font.Name := RSUiFontName;
   Font.Size := 9;
   Font.Quality := fqCleartype;
   FEdit := TEdit.Create(Self);
@@ -81,7 +81,7 @@ begin
   FEdit.AutoSize := False; // sinon boucle ChangeBounds (voir uFindBar)
   FEdit.BorderStyle := bsNone;
   FEdit.Color := clEditorBg;
-  FEdit.Font.Name := RTFontName;
+  FEdit.Font.Name := RSUiFontName;
   FEdit.Font.Size := 10;
   FEdit.Font.Quality := fqCleartype;
   FEdit.Font.Color := clEditorFg;
@@ -226,16 +226,16 @@ begin
   if FTop < 0 then FTop := 0;
 end;
 
-procedure TCommandPalette.OpenPalette(ABar: TRTMenuBar);
+procedure TCommandPalette.OpenPalette(AMenu: TAppMenu);
 var
   i, w: Integer;
 begin
-  if (Parent = nil) or (ABar = nil) then Exit;
+  if (Parent = nil) or (AMenu = nil) then Exit;
   SetLength(FCmds, 0);
   FCount := 0;
-  ABar.RefreshRecent;
-  for i := 0 to ABar.MenuCount - 1 do
-    CollectFrom(ABar.MenuRoot(i), ABar.MenuTitle(i) + ' > ');
+  AMenu.RefreshRecent;
+  for i := 0 to AMenu.MenuCount - 1 do
+    CollectFrom(AMenu.MenuRoot(i), AMenu.MenuTitle(i) + ' > ');
   SetLength(FCmds, FCount);
 
   w := PAL_W;

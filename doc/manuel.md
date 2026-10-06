@@ -77,7 +77,7 @@ de recompiler, sinon ils partent avec le process.
 **macOS, une étape en plus.** Compiler produit un binaire nu, que macOS traite avec
 la méfiance qu'il mérite. Lance `scripts/make-app.sh` (qui prend aussi `--release`)
 pour le pipeline complet : build, emballage dans un bundle `RottenText.app` avec les
-données de thèmes et de syntaxe à l'intérieur, génération de l'icône, écriture de
+données de syntaxe à l'intérieur, génération de l'icône, écriture de
 l'`Info.plist`, et signature ad-hoc pour qu'Apple Silicon accepte de le lancer tout
 court. La signature est ad-hoc, pas notarisée, donc si tu copies le `.app` sur un
 autre Mac, Gatekeeper va hurler. Sur la machine qui l'a compilé, ça se lance sans
@@ -130,9 +130,9 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
   grammaires écrites à la main. Les gros fichiers sautent la coloration automatique
   exprès, parce que tokeniser un log de 156 Mo pour le rendre joli n'est pas une
   fonctionnalité, c'est un déni de service contre toi-même.
-- **Thèmes** : une douzaine, changeables à chaud. La barre de menu reste claire dans
-  tous les thèmes, exprès. Si ça jure avec ton thème sombre, c'est un choix assumé,
-  pas un bug à signaler.
+- **Thèmes** : dix-neuf, embarqués dans le binaire et changeables à chaud. La barre
+  de menu suit le thème. Tes propres thèmes sont des fichiers JSON déposés dans un
+  dossier `themes` du répertoire de configuration.
 - **Police de l'éditeur** (`View > Font...`) : famille parmi les polices
   embarquées (les cinq Monaspace et JetBrains Mono Nerd Font) et taille.
   Sauvegardée dans les préférences, prime sur la police du thème ; "Theme

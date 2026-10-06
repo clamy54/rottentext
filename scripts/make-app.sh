@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Fabrique RottenText.app (macOS). Compiler le binaire ne suffit pas sous macOS:
-# il faut le bundle .app, y embarquer les ressources runtime (themes/ + syntax/)
+# il faut le bundle .app, y embarquer les ressources runtime (syntax/)
 # et le signer (ad-hoc suffit pour un lancement local sur Apple Silicon).
 #
-# themes/ et syntax/ vont dans Contents/MacOS/ (a COTE du binaire) car le code
-# les cherche via ExtractFilePath(ParamStr(0)) = dossier de l'exe = Contents/MacOS.
-# Les polices sont deja embarquees en ressources (pas besoin de fonts/).
+# syntax/ va dans Contents/MacOS/ (a COTE du binaire) car le code le cherche
+# via ExtractFilePath(ParamStr(0)) = dossier de l'exe = Contents/MacOS.
+# Polices et themes sont dans le binaire (ressources de RottenUI).
 #
 # Usage: scripts/make-app.sh [--release]
 set -euo pipefail
@@ -28,7 +28,6 @@ cp "$root/RottenText" "$macos/RottenText"
 chmod +x "$macos/RottenText"
 
 # 3) ressources runtime a cote du binaire
-[ -d "$root/themes" ] && cp -R "$root/themes" "$macos/themes"
 [ -d "$root/syntax" ] && cp -R "$root/syntax" "$macos/syntax"
 
 # 4) icone .icns (best effort, cosmetique: un echec ne bloque pas le build)

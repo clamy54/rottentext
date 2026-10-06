@@ -55,7 +55,7 @@ hashes. Diff against a file, in a live two-pane view you can edit.
 
 Tabs, split view, minimap, find and replace with a live match counter, dozens of
 encodings with autodetection, per-document line endings preserved on save, hex
-view for binaries, syntax highlighting for 40-odd languages, 18 themes, a folder
+view for binaries, syntax highlighting for 40-odd languages, 19 themes, a folder
 sidebar, macros, a command palette, printing with colors, and sessions that
 survive you closing the window by reflex at the end of a 14 hour shift.
 
@@ -74,10 +74,14 @@ security", we both know you haven't read the source, so just grab the package.
 ### Building from source
 
 For the three people who insist. You need **Lazarus** (tested with 4.8) and
-**FPC 3.2.2**, the `SynEdit`, `LCL` and `Printer4Lazarus` packages, and the 24
-TTF files in `fonts/` (20 **Monaspace Frozen**, 4 **JetBrains Mono NL Nerd
-Font**; they are in this repository; the build compiles them into the binary as
-resources).
+**FPC 3.2.2**, and the `SynEdit`, `LCL` and `Printer4Lazarus` packages. The
+Linux build uses GTK3, which needs Lazarus trunk; the build script says so if
+yours is too old.
+
+The interface kit, the fonts (20 **Monaspace Frozen**, 4 **JetBrains Mono NL
+Nerd Font**) and the themes come from the
+[RottenUI](https://github.com/clamy54/rottenUI) submodule, so clone with
+`--recurse-submodules`, or run `git submodule update --init` afterwards.
 
 ```sh
 scripts/build.ps1          # Windows   (-Release for the small binary)
@@ -85,8 +89,8 @@ scripts/build.sh           # Linux     (--release)
 scripts/make-app.sh        # macOS: builds the .app bundle, not just the binary
 ```
 
-`syntax/` and `themes/` must sit next to the executable at runtime. `fonts/` does
-not: the binary carries them.
+`syntax/` must sit next to the executable at runtime. Fonts and themes do not:
+the binary carries them.
 
 Packaging scripts for the installer, the `.deb` and the `.dmg` live in
 [`dist/`](dist/).

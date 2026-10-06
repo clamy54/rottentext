@@ -42,7 +42,7 @@ constructor TRTStatusBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FFileType := 'Plain Text';
-  Font.Name := RTFontName;
+  Font.Name := RSUiFontName;
   Font.Size := 9;
   Font.Quality := fqCleartype;
 end;

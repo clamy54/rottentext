@@ -22,7 +22,8 @@ var
 implementation
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, uJsonSafe, uSafeSave, uThemeLoad, uEditorView;
+  Classes, SysUtils, fpjson, jsonparser, uJsonSafe, uRtSafeSave, uTheme, uThemeLoad,
+  uEditorView;
 
 const
   MAX_SETTINGS_BYTES = 64 * 1024;
@@ -80,20 +81,50 @@ begin
     Delete(S, 1, 3);
 end;
 
+// Les reglages d'avant RottenUI retenaient un nom de fichier ("one-dark.json"),
+// les themes embarques n'ont plus qu'un nom ("One Dark"): on compare sans casse
+// ni separateurs. Inconnu = chaine rendue telle quelle, InitThemes tranchera.
+function ThemeNameFromSetting(const AValue: string): string;
+
+  function Squash(const S: string): string;
+  var
+    k: Integer;
+  begin
+    Result := '';
+    for k := 1 to Length(S) do
+      if S[k] in ['a'..'z', 'A'..'Z', '0'..'9'] then
+        Result := Result + LowerCase(S[k]);
+  end;
+
+var
+  i: Integer;
+  want: string;
+begin
+  Result := AValue;
+  if not SameText(ExtractFileExt(AValue), '.json') then Exit;
+  want := Squash(ChangeFileExt(ExtractFileName(AValue), ''));
+  // InitThemes n'a pas encore tourne: le registre se remplit ici, sans rien
+  // appliquer de plus que le defaut
+  InitThemes('');
+  for i := 0 to ThemeCount - 1 do
+    if Squash(ThemeName(i)) = want then
+      Exit(ThemeName(i));
+end;
+
 procedure SettingsLoad;
 var
   fs: TFileStream;
   data: string;
   root: TJSONData;
   obj: TJSONObject;
-  themed: Boolean;
+  themeName: string;
   n: Integer;
 begin
   // rattrapage des configs nees avant le durcissement (0644/0755); tourne a
   // chaque lancement, couvre aussi les fenetres hors session
   MakePrivateDir(GetAppConfigDir(False));
   MakePrivateFile(SettingsFile);
-  themed := False;
+  themeName := '';
   root := nil;
   try
     try
@@ -117,9 +148,9 @@ begin
           // avant le theme: ApplyTheme pose la pref
           PrefEditorFontKey := JStr(obj, 'editorFont');
           n := JInt(obj, 'editorFontSize', 0);
-          if (n < PREF_FONT_SIZE_MIN) or (n > PREF_FONT_SIZE_MAX) then n := 0;
+          if (n < EditorFontSizeMin) or (n > EditorFontSizeMax) then n := 0;
           PrefEditorFontSize := n;
-          themed := ApplyThemeFile(ExtractFileName(JStr(obj, 'theme')));
+          themeName := ThemeNameFromSetting(JStr(obj, 'theme'));
           RTTabWidth := ClampI(JInt(obj, 'tabWidth', RTTabWidth), 1, 16);
           RTWordWrap := JBool(obj, 'wordWrap', RTWordWrap);
           RTWrapColumn := ClampI(JInt(obj, 'wrapColumn', RTWrapColumn), 0, 1000);
@@ -141,8 +172,8 @@ begin
   finally
     root.Free;
   end;
-  if not themed then
-    ApplyDefaultTheme;
+  // nom inconnu ou absent: InitThemes retombe sur le premier theme (Rotten)
+  InitThemes(themeName);
 end;
 
 procedure SettingsSave;
@@ -155,7 +186,7 @@ begin
   try
     obj := TJSONObject.Create;
     try
-      tf := CurrentThemeFile;
+      tf := CurrentThemeName;
       if tf <> '' then
         obj.Add('theme', tf);
       if PrefEditorFontKey <> '' then

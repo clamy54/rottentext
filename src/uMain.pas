@@ -2,25 +2,28 @@ unit uMain;
 
 {$mode objfpc}{$H+}
 {$IFDEF DARWIN}{$modeswitch objectivec1}{$ENDIF}
+// RT_CUSTOM_MENUBAR: force la barre dessinee sous macOS (test)
+{$IF DEFINED(DARWIN) AND NOT DEFINED(RT_CUSTOM_MENUBAR)}{$DEFINE RT_NATIVE_MENU}{$ENDIF}
 
 interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, ExtCtrls, LCLType, LCLVersion,
   Menus,
-  Dialogs, {$IFDEF DARWIN}CocoaConfig,{$ENDIF} uTheme, uMenuBar, uTabBar,
+  Dialogs, {$IFDEF DARWIN}CocoaConfig,{$ENDIF} uTheme, uRtMessage,
+  {$IFNDEF RT_NATIVE_MENU}uMenuBar,{$ENDIF} uAppMenu, uGroupTabs,
   uStatusBar, uMinimap, uScrollbar,
   uActions, uDocumentManager, uDocument, uEditorView, uHighlight, uFindBar,
   uEncoding, uHexView, uSideBar, uSettings, uSession, uEol, uPalette,
   uInstance;
 
 const
-  RT_VERSION = '1.9';
+  RT_VERSION = '2.0';
 
 type
   TPaneUI = record
     Panel: TPanel;
-    Tabs: TTabBar;
+    Tabs: TGroupTabs;
     Host: TPanel;
     Right: TPanel;
     Map: TMinimap;
@@ -29,7 +32,10 @@ type
 
   TfrmMain = class(TForm)
   private
-    FMenuBar: TRTMenuBar;
+    FAppMenu: TAppMenu;
+    {$IFNDEF RT_NATIVE_MENU}
+    FMenuBar: TRSMenuBar;
+    {$ENDIF}
     FStatusBar: TRTStatusBar;
     FFindBar: TFindBar;
     FSideBar: TSideBar;
@@ -87,6 +93,7 @@ type
     procedure UpdateCaption;
     procedure FormShowHandler(Sender: TObject);
     procedure FormActivateHandler(Sender: TObject);
+    procedure ExternalCheckAsync(Data: PtrInt);
     procedure FormCloseQueryHandler(Sender: TObject; var CanClose: Boolean);
     procedure FormKeyDownHandler(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMacroState(Sender: TObject);
@@ -129,10 +136,10 @@ begin
   FPanes[AIndex].Panel.Color := clEditorBg;
   FPanes[AIndex].Panel.Parent := FContent;
 
-  FPanes[AIndex].Tabs := TTabBar.Create(Self);
-  FPanes[AIndex].Tabs.Parent := FPanes[AIndex].Panel;
-  FPanes[AIndex].Tabs.Align := alTop;
-  FPanes[AIndex].Tabs.Height := 35;
+  FPanes[AIndex].Tabs := TGroupTabs.Create(Self);
+  FPanes[AIndex].Tabs.Bar.Parent := FPanes[AIndex].Panel;
+  FPanes[AIndex].Tabs.Bar.Align := alTop;
+  FPanes[AIndex].Tabs.Bar.Height := 35;
   FPanes[AIndex].Tabs.OnTabDrop := @HandleTabDrop;
 
   FPanes[AIndex].Host := TPanel.Create(Self);
@@ -194,10 +201,12 @@ begin
   Application.OnActivate := @FormActivateHandler;
   OnCloseQuery := @FormCloseQueryHandler;
 
-  FMenuBar := TRTMenuBar.Create(Self);
+  {$IFNDEF RT_NATIVE_MENU}
+  FMenuBar := TRSMenuBar.Create(Self);
   FMenuBar.Parent := Self;
   FMenuBar.Align := alTop;
   FMenuBar.Height := 26;
+  {$ENDIF}
 
   FStatusBar := TRTStatusBar.Create(Self);
   FStatusBar.Parent := Self;
@@ -251,11 +260,13 @@ begin
   FFindBar.Attach(FMgr);
   FFindBar.OnMatchInfo := @FStatusBar.SetFindInfo;
   FActions.AttachFindBar(FFindBar);
-  FMenuBar.Attach(FActions);
+  FAppMenu := TAppMenu.Create(Self, FActions);
+  {$IFDEF RT_NATIVE_MENU}
+  FAppMenu.AttachNative(Self);
+  {$ELSE}
+  FAppMenu.AttachBar(FMenuBar);
+  {$ENDIF}
   {$IFDEF DARWIN}
-  // menus dans la barre globale; la barre custom reste le constructeur de l'arbre
-  FMenuBar.AttachNative(Self);
-  FMenuBar.Visible := False;
   {$IF lcl_fullversion >= 4080000}
   // 4.8: plus de onQuitApp. Quit Dock/extinction passe par QueryEndSession,
   // Cmd+Q par l'item Quit re-cible au premier Show (voir uDarwinQuit)
@@ -347,7 +358,7 @@ begin
   end;
   if SessionWarning = FSessWarned then Exit;
   FSessWarned := SessionWarning; // pose AVANT le dialogue: le timer repasse pendant
-  MessageDlg('RottenText',
+  RtMessageDlg('RottenText',
     'Session saved, but ' + SessionWarning + '.', mtWarning, [mbOK], 0);
 end;
 
@@ -419,7 +430,7 @@ begin
   for i := 0 to High(todo) do
     OpenDropped(todo[i]);
   if dropped > 0 then
-    MessageDlg('RottenText',
+    RtMessageDlg('RottenText',
       Format('%d file(s) received while busy were not opened (queue full).',
         [dropped]), mtWarning, [mbOK], 0);
 end;
@@ -482,6 +493,14 @@ begin
     Show;
   end;
   {$ENDIF}
+  // differe: ouverte PENDANT la notification d'activation, la boite de message
+  // ne prend pas le clavier sous cocoa (Entree et Echap sans effet)
+  Application.QueueAsyncCall(@ExternalCheckAsync, 0);
+end;
+
+procedure TfrmMain.ExternalCheckAsync(Data: PtrInt);
+begin
+  if DocMutationBlocked then Exit;
   if FMgr <> nil then FMgr.CheckExternalChanges;
 end;
 
@@ -657,7 +676,7 @@ begin
       FPanes[i].Panel.Color := clEditorBg;
       FPanes[i].Host.Color := clEditorBg;
       FPanes[i].Right.Color := clEditorBg;
-      FPanes[i].Tabs.RefreshTheme;
+      FPanes[i].Tabs.Invalidate;
       FPanes[i].Map.RefreshTheme;
       FPanes[i].Bar.Color := clEditorBg;
       FPanes[i].Bar.Invalidate;
@@ -673,7 +692,9 @@ begin
       d.HexView.Invalidate;
     end;
   end;
-  FMenuBar.Invalidate;
+  {$IFNDEF RT_NATIVE_MENU}
+  FMenuBar.RefreshTheme;
+  {$ENDIF}
   FStatusBar.Invalidate;
   FFindBar.RefreshTheme;
   FSideBar.RefreshTheme;
@@ -687,7 +708,7 @@ begin
   if FPalette.Visible then
     FPalette.ClosePalette
   else
-    FPalette.OpenPalette(FMenuBar);
+    FPalette.OpenPalette(FAppMenu);
 end;
 
 // les handlers de menu executes ensuite lisent la vue focusee
@@ -778,7 +799,7 @@ begin
     // session non ecrite: repli sur les prompts, sinon les notes sont perdues
     if not SessionSaveFrom(FMgr) then
     begin
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         'The session could not be saved: unsaved tabs will not be restored' +
         LineEnding + 'at next launch. Save them now if needed.',
         mtWarning, [mbOK], 0);
@@ -889,7 +910,7 @@ begin
   begin
     FStatusBar.SetLeftOverride('');
     FStatusBar.Bind(doc.View.Syn);
-    FStatusBar.SetFileType(LanguageLabel(doc.View.Syn.Highlighter));
+    FStatusBar.SetFileType(LanguageLabel(EditorHl(doc.View.Syn)));
     FStatusBar.SetEncoding(Encodings[doc.Encoding].Caption);
     FStatusBar.SetEol(EolName(doc.Eol));
   end

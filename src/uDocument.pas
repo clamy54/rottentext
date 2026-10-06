@@ -7,7 +7,7 @@ interface
 uses
   {$IFDEF UNIX}BaseUnix,{$ENDIF}
   Classes, SysUtils, Controls, LazUTF8, uEditorView, uEncoding, uHexView,
-  uSafeSave, uEol;
+  uRtSafeSave, uEol;
 
 const
   // au-dela: mode gros fichier (ni coloration auto ni wrap a l'ouverture)

@@ -4,11 +4,11 @@
 # disposer de dpkg-deb. Usage : ./build-deb.sh [version]
 #
 # Valide le 2026-07-13 (Ubuntu, GNOME 50) : construction, dpkg -i, lancement,
-# desinstallation.
+# desinstallation. C'etait en GTK2: le paquet GTK3 reste a valider.
 #
-# Layout : le binaire N'EST PAS dans /usr/bin. Les loaders cherchent syntax/ et
-# themes/ A COTE de l'executable (ExtractFilePath(ParamStr(0))), donc un
-# /usr/bin/rottentext nu irait chercher /usr/bin/syntax/. Tout vit dans
+# Layout : le binaire N'EST PAS dans /usr/bin. Le loader cherche syntax/ A COTE
+# de l'executable (ExtractFilePath(ParamStr(0))), donc un /usr/bin/rottentext nu
+# irait chercher /usr/bin/syntax/. Les themes, eux, sont dans le binaire. Tout vit dans
 # /usr/lib/rottentext/ et /usr/bin/rottentext est un WRAPPER qui fait exec sur
 # le vrai binaire -- exec remplace argv[0] par le chemin reel, donc ParamStr(0)
 # pointe bien vers /usr/lib/rottentext/ (un simple symlink ne suffirait PAS :
@@ -39,10 +39,9 @@ mkdir -p "$pkg/DEBIAN" \
 # binaire + donnees runtime, cote a cote (contrainte des loaders)
 install -m 0755 "$bin" "$pkg/usr/lib/rottentext/RottenText"
 cp -r "$root/syntax" "$pkg/usr/lib/rottentext/"
-cp -r "$root/themes" "$pkg/usr/lib/rottentext/"
-chmod -R a+rX "$pkg/usr/lib/rottentext/syntax" "$pkg/usr/lib/rottentext/themes"
+chmod -R a+rX "$pkg/usr/lib/rottentext/syntax"
 
-# wrapper : exec => argv[0] = le vrai chemin, syntax/ et themes/ sont trouves
+# wrapper : exec => argv[0] = le vrai chemin, syntax/ est trouve
 cat > "$pkg/usr/bin/rottentext" <<'EOF'
 #!/bin/sh
 exec /usr/lib/rottentext/RottenText "$@"
@@ -101,7 +100,7 @@ if command -v dpkg-shlibdeps >/dev/null 2>&1; then
 fi
 if [ -z "$deps" ]; then
 	echo "dpkg-shlibdeps indisponible : Depends de repli (a verifier)" >&2
-	deps="libc6, libgtk2.0-0t64 | libgtk2.0-0, libx11-6"
+	deps="libc6, libgtk-3-0t64 | libgtk-3-0"
 fi
 
 sed -e "s/@VERSION@/$ver/" -e "s/@ARCH@/$arch/" -e "s/@DEPENDS@/$deps/" \

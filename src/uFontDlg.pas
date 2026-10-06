@@ -13,7 +13,11 @@ implementation
 
 uses
   Classes, SysUtils, Forms, Controls, StdCtrls, Graphics, Dialogs,
-  uFontEmbed, uTheme, uThemeLoad;
+  uFontEmbed, uTheme, uThemeLoad, uThemedControls, uRtMessage;
+
+const
+  // taille proposee quand la courante sort de la liste
+  EDITOR_SIZE_DEF = 12;
 
 const
   SIZE_MIN = 6;
@@ -22,9 +26,9 @@ const
 type
   TFontForm = class(TForm)
   private
-    FFamily: TComboBox;
+    FFamily: TThemedCombo;
     FKeys: TStringList; // cle par ligne du combo
-    FSize: TComboBox;
+    FSize: TThemedCombo;
     FPreview: TLabel;
     procedure ChoiceChanged(Sender: TObject);
     procedure UpdatePreview;
@@ -41,7 +45,7 @@ end;
 
 function TFontForm.SelectedSize: Integer;
 begin
-  Result := StrToIntDef(FSize.Text, RT_EDITOR_SIZE_DEF);
+  Result := StrToIntDef(FSize.Text, EDITOR_SIZE_DEF);
   if Result < SIZE_MIN then Result := SIZE_MIN;
   if Result > SIZE_MAX then Result := SIZE_MAX;
 end;
@@ -51,7 +55,7 @@ var
   fam: string;
 begin
   fam := ResolveMonaspace(SelectedKey);
-  if fam = '' then fam := RTEditorFont;
+  if fam = '' then fam := RSEditorFontName;
   FPreview.Font.Name := fam;
   FPreview.Font.Size := SelectedSize;
 end;
@@ -65,14 +69,14 @@ function ShowEditorFontDialog: Boolean;
 var
   f: TFontForm;
   lbl: TLabel;
-  btn: TButton;
+  btn: TThemedButton;
   i, sz: Integer;
   key: string;
 begin
   Result := False;
   if not MonaspaceAvailable then
   begin
-    MessageDlg('RottenText', 'The embedded fonts are not available in this ' +
+    RtMessageDlg('RottenText', 'The embedded fonts are not available in this ' +
       'binary: the system default font is used.', mtInformation, [mbOK], 0);
     Exit;
   end;
@@ -83,7 +87,6 @@ begin
     f.Caption := 'Editor Font';
     f.BorderStyle := bsDialog;
     f.Position := poMainFormCenter;
-    f.Color := clEditorBg;
     f.ClientWidth := 440;
     f.ClientHeight := 230;
 
@@ -91,9 +94,8 @@ begin
     lbl.Parent := f;
     lbl.SetBounds(16, 20, 90, 18);
     lbl.Caption := 'Family:';
-    lbl.Font.Color := clEditorFg;
 
-    f.FFamily := TComboBox.Create(f);
+    f.FFamily := TThemedCombo.Create(f);
     f.FFamily.Parent := f;
     f.FFamily.SetBounds(112, 16, 300, 26);
     f.FFamily.Style := csDropDownList;
@@ -103,7 +105,7 @@ begin
       if ResolveMonaspace(key) = '' then Continue; // famille non chargee
       f.FKeys.Add(key);
       f.FFamily.Items.Add(MonaspaceFamilyLabel(i));
-      if SameText(ResolveMonaspace(key), RTEditorFont) then
+      if SameText(ResolveMonaspace(key), RSEditorFontName) then
         f.FFamily.ItemIndex := f.FFamily.Items.Count - 1;
     end;
     if f.FFamily.ItemIndex < 0 then f.FFamily.ItemIndex := 0;
@@ -112,53 +114,54 @@ begin
     lbl.Parent := f;
     lbl.SetBounds(16, 58, 90, 18);
     lbl.Caption := 'Size:';
-    lbl.Font.Color := clEditorFg;
 
-    f.FSize := TComboBox.Create(f);
+    f.FSize := TThemedCombo.Create(f);
     f.FSize.Parent := f;
     f.FSize.SetBounds(112, 54, 80, 26);
     f.FSize.Style := csDropDownList;
     for sz := SIZE_MIN to SIZE_MAX do
     begin
       f.FSize.Items.Add(IntToStr(sz));
-      if sz = RTEditorSize then f.FSize.ItemIndex := f.FSize.Items.Count - 1;
+      if sz = RSEditorFontSize then f.FSize.ItemIndex := f.FSize.Items.Count - 1;
     end;
     if f.FSize.ItemIndex < 0 then
-      f.FSize.ItemIndex := f.FSize.Items.IndexOf(IntToStr(RT_EDITOR_SIZE_DEF));
+      f.FSize.ItemIndex := f.FSize.Items.IndexOf(IntToStr(EDITOR_SIZE_DEF));
 
     f.FPreview := TLabel.Create(f);
     f.FPreview.Parent := f;
     f.FPreview.AutoSize := False;
     f.FPreview.SetBounds(16, 96, 408, 70);
     f.FPreview.WordWrap := True;
-    f.FPreview.Font.Color := clEditorFg;
     f.FPreview.Caption := 'if (x != 0) { return a->b[i]; }  0O1lI  |{}[]()<>#$&@' +
       LineEnding + 'drwxr-xr-x  1.234 KiB  2026-07-17  # comment';
 
     f.FFamily.OnChange := @f.ChoiceChanged;
     f.FSize.OnChange := @f.ChoiceChanged;
-    f.UpdatePreview;
 
     // mrIgnore = retour a la police du theme
-    btn := TButton.Create(f);
+    btn := TThemedButton.Create(f);
     btn.Parent := f;
     btn.SetBounds(16, 184, 120, 30);
     btn.Caption := 'Theme Default';
     btn.ModalResult := mrIgnore;
 
-    btn := TButton.Create(f);
+    btn := TThemedButton.Create(f);
     btn.Parent := f;
     btn.SetBounds(244, 184, 88, 30);
     btn.Caption := 'OK';
     btn.ModalResult := mrOK;
     btn.Default := True;
 
-    btn := TButton.Create(f);
+    btn := TThemedButton.Create(f);
     btn.Parent := f;
     btn.SetBounds(336, 184, 88, 30);
     btn.Caption := 'Cancel';
     btn.ModalResult := mrCancel;
     btn.Cancel := True;
+
+    ThemeDialog(f);
+    // apres ThemeDialog: il pose la police d'interface partout
+    f.UpdatePreview;
 
     case f.ShowModal of
       mrOK:
@@ -175,7 +178,7 @@ begin
     else
       Exit;
     end;
-    ReapplyEditorFont;
+    ApplyThemeIndex(CurrentThemeIndex);
     Result := True;
   finally
     f.FKeys.Free;

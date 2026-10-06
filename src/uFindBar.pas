@@ -105,7 +105,7 @@ constructor TFindBar.Create(AOwner: TComponent);
     Result.AutoSize := False;
     Result.BorderStyle := bsNone;
     Result.Color := clBorder;
-    Result.Font.Name := RTFontName;
+    Result.Font.Name := RSUiFontName;
     Result.Font.Size := 10;
     Result.Font.Quality := fqCleartype;
     Result.Font.Color := clEditorFg;
@@ -125,7 +125,7 @@ begin
   FHintTimer.Enabled := False;
   FHintTimer.Interval := 500;
   FHintTimer.OnTimer := @HintTimerTick;
-  Font.Name := RTFontName;
+  Font.Name := RSUiFontName;
   Font.Size := 9;
   Font.Quality := fqCleartype;
   FFindEdit := MakeEdit;

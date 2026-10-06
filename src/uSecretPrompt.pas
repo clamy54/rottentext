@@ -24,7 +24,8 @@ procedure WipeSecret(var AValue: string);
 implementation
 
 uses
-  Classes, SysUtils, Math, Controls, StdCtrls, Forms, Dialogs, LazUTF8;
+  Classes, SysUtils, Math, Controls, StdCtrls, Forms, Dialogs, LazUTF8,
+  uThemedControls, uRtMessage;
 
 type
   // Champ masque sans secure input: le Text visible est '*' x N, le clair est
@@ -177,7 +178,7 @@ procedure TSecretForm.DoOK(Sender: TObject);
 begin
   if NeedConfirm and (Ed1.Value <> Ed2.Value) then
   begin
-    MessageDlg('RottenText', 'The two entries do not match.', mtWarning, [mbOK], 0);
+    RtMessageDlg('RottenText', 'The two entries do not match.', mtWarning, [mbOK], 0);
     Ed2.SetFocus;
     Exit;
   end;
@@ -199,7 +200,7 @@ function AskSecret(const ATitle, APrompt: string; out AValue: string;
 var
   f: TSecretForm;
   lbl, lbl2: TLabel;
-  bOk, bCancel: TButton;
+  bOk, bCancel: TThemedButton;
   y: Integer;
 begin
   Result := False;
@@ -239,14 +240,14 @@ begin
     end;
 
     Inc(y, 6);
-    bOk := TButton.Create(f);
+    bOk := TThemedButton.Create(f);
     bOk.Parent := f;
     bOk.SetBounds(180, y, 80, 28);
     bOk.Caption := 'OK';
     bOk.Default := True;
     bOk.OnClick := @f.DoOK;
 
-    bCancel := TButton.Create(f);
+    bCancel := TThemedButton.Create(f);
     bCancel.Parent := f;
     bCancel.SetBounds(268, y, 80, 28);
     bCancel.Caption := 'Cancel';
@@ -255,6 +256,7 @@ begin
 
     f.ClientHeight := y + 40;
     f.ActiveControl := f.Ed1;
+    ThemeDialog(f);
 
     if f.ShowModal = mrOk then
     begin

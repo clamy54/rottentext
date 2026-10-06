@@ -98,7 +98,7 @@ implementation
 
 uses
   // verrou d'action: un dialogue natif n'incremente pas forcement ModalLevel
-  uActions, uEncoding, uSafeSave;
+  uActions, uEncoding, uRtSafeSave, uRtMessage;
 
 constructor TDocumentManager.Create(AHost: TWinControl);
 begin
@@ -275,7 +275,7 @@ begin
     if Assigned(FOnOpenFolder) then
       FOnOpenFolder(AFileName)
     else
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         Format('%s is a folder, not a file.', [AFileName]),
         mtInformation, [mbOK], 0);
     Exit(nil);
@@ -312,7 +312,7 @@ begin
         idx := FDocs.IndexOf(Result);
         if idx >= 0 then RemoveAt(idx);
       end;
-      MessageDlg('RottenText',
+      RtMessageDlg('RottenText',
         Format('Cannot open %s.' + LineEnding + '%s', [AFileName, E.Message]),
         mtError, [mbOK], 0);
       Exit(nil);
@@ -473,7 +473,7 @@ begin
   // fige la liste: sinon AIndex et les index des boucles appelantes glissent
   BeginActionModal;
   try
-    case MessageDlg('RottenText',
+    case RtMessageDlg('RottenText',
         Format('Save changes to %s before closing?', [doc.DisplayName]),
         mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes: Result := SaveDoc(AIndex);
@@ -585,7 +585,7 @@ begin
   Result := True;
   if ADoc.Conflict then
   begin
-    Result := MessageDlg('RottenText',
+    Result := RtMessageDlg('RottenText',
       Format('%s was changed by another program and you kept your version.' +
         LineEnding + 'Overwrite the version on disk?', [ADoc.DisplayName]),
       mtWarning, [mbYes, mbCancel], 0) = mrYes;
@@ -593,12 +593,12 @@ begin
   end;
   case ADoc.CheckDiskChange of
     dcModified:
-      Result := MessageDlg('RottenText',
+      Result := RtMessageDlg('RottenText',
         Format('%s has changed on disk since it was loaded.' + LineEnding +
           'Overwrite the version on disk?', [ADoc.DisplayName]),
         mtWarning, [mbYes, mbCancel], 0) = mrYes;
     dcDeleted:
-      Result := MessageDlg('RottenText',
+      Result := RtMessageDlg('RottenText',
         Format('%s no longer exists on disk.' + LineEnding +
           'Save will recreate it. Continue?', [ADoc.DisplayName]),
         mtWarning, [mbYes, mbCancel], 0) = mrYes;
@@ -609,7 +609,7 @@ end;
 procedure WarnMetaLoss;
 begin
   if LastMetaError = '' then Exit;
-  MessageDlg('RottenText',
+  RtMessageDlg('RottenText',
     'Saved, but ' + LastMetaError + '.', mtWarning, [mbOK], 0);
   LastMetaError := '';
 end;
@@ -624,7 +624,7 @@ begin
   nm := '';
   if (ADoc.Encoding >= 0) and (ADoc.Encoding <= High(Encodings)) then
     nm := Encodings[ADoc.Encoding].Caption;
-  Result := MessageDlg('RottenText',
+  Result := RtMessageDlg('RottenText',
     Format('Some characters cannot be represented in %s and would be lost.' +
       LineEnding + 'Save anyway?', [nm]),
     mtWarning, [mbYes, mbCancel], 0) = mrYes;
@@ -651,7 +651,7 @@ begin
       // chemin d'origine re-valide tel quel sur un read-only: fmCreate planterait
       if doc.ReadOnly and SameFileName(dlg.FileName, doc.FileName) then
       begin
-        MessageDlg('RottenText',
+        RtMessageDlg('RottenText',
           Format('%s is read-only. Choose another name.', [doc.DisplayName]),
           mtWarning, [mbOK], 0);
         Continue;
@@ -666,7 +666,7 @@ begin
       except
         on E: Exception do
         begin
-          MessageDlg('RottenText',
+          RtMessageDlg('RottenText',
             Format('Cannot save %s.' + LineEnding + '%s', [dlg.FileName, E.Message]),
             mtError, [mbOK], 0);
           Continue;
@@ -694,7 +694,7 @@ begin
     Result := SaveDocAs(AIndex)
   else
   begin
-    // doc tenu en travers des dialogues natifs ci-dessous: cf. SaveDocAs
+    // doc tenu en travers des dialogues ci-dessous: cf. SaveDocAs
     BeginActionModal;
     try
       // disque change et jamais recharge: ecrire ecraserait la version externe
@@ -707,7 +707,7 @@ begin
       except
         on E: Exception do
         begin
-          MessageDlg('RottenText',
+          RtMessageDlg('RottenText',
             Format('Cannot save %s.' + LineEnding + '%s', [doc.DisplayName, E.Message]),
             mtError, [mbOK], 0);
           Result := False;
@@ -761,7 +761,7 @@ end;
 procedure TDocumentManager.DiskActionFailed(ADoc: TDocument; E: Exception);
 begin
   ADoc.DeferredReload := True;
-  MessageDlg('RottenText',
+  RtMessageDlg('RottenText',
     Format('Could not reload %s from disk:' + LineEnding + '%s',
       [ADoc.DisplayName, E.Message]), mtWarning, [mbOK], 0);
 end;
@@ -771,7 +771,7 @@ begin
   if ActiveDoc = nil then Exit;
   // relire le disque jette les modifs en cours (en hex aussi: l'overlay saute)
   if ActiveDoc.Modified then
-    if MessageDlg('RottenText',
+    if RtMessageDlg('RottenText',
         Format('Revert %s to the version on disk?' + LineEnding +
           'Unsaved changes are lost.', [ActiveDoc.DisplayName]),
         mtWarning, [mbYes, mbCancel], 0) <> mrYes then Exit;
@@ -816,7 +816,7 @@ begin
       if not ADoc.DeferredReload then
       begin
         ADoc.DeferredReload := True;
-        MessageDlg('RottenText',
+        RtMessageDlg('RottenText',
           Format('Could not reload %s:' + LineEnding + '%s' + LineEnding +
             'Use File > Revert File to retry.', [ADoc.DisplayName, E.Message]),
           mtWarning, [mbOK], 0);
@@ -833,7 +833,7 @@ var
 begin
   if FCheckingExternal then Exit; // les dialogs ci-dessous re-declenchent OnActivate
   FCheckingExternal := True;
-  // dialogues natifs: sans verrou, un open IPC/drop mute FDocs et decale i
+  // dialogues: sans verrou, un open IPC/drop mute FDocs et decale i
   BeginActionModal;
   changed := False;
   try
@@ -853,7 +853,7 @@ begin
             else
             begin
               Activate(i);
-              if MessageDlg('RottenText',
+              if RtMessageDlg('RottenText',
                   Format('%s has been changed by another program.' + LineEnding +
                     'Reload it and lose your unsaved changes?', [d.DisplayName]),
                   mtWarning, [mbYes, mbNo], 0) = mrYes then
@@ -873,7 +873,7 @@ begin
         dcDeleted:
           begin
             Activate(i);
-            if MessageDlg('RottenText',
+            if RtMessageDlg('RottenText',
                 Format('%s no longer exists on disk.' + LineEnding +
                   'Keep it in the editor?', [d.DisplayName]),
                 mtWarning, [mbYes, mbNo], 0) = mrYes then
@@ -913,11 +913,11 @@ var
 begin
   doc := ActiveDoc;
   if (doc = nil) or doc.Untitled or not FileExists(doc.FileName) then Exit;
-  // doc capture: sous cocoa les timers IPC/drop tournent pendant le MessageDlg
+  // doc capture: les timers IPC/drop tournent pendant la boite de message
   BeginActionModal;
   try
     if doc.Modified then
-      if MessageDlg('RottenText',
+      if RtMessageDlg('RottenText',
           Format('Reopening %s will discard unsaved changes. Continue?',
             [doc.DisplayName]),
           mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
@@ -949,11 +949,11 @@ begin
   doc := ActiveDoc;
   if (doc = nil) or doc.Untitled or not FileExists(doc.FileName) then Exit;
   if doc.IsHex then Exit;
-  // meme verrou que ReopenActiveWithEncoding: MessageDlg natif, doc tenu
+  // meme verrou que ReopenActiveWithEncoding: boite de message, doc tenu
   BeginActionModal;
   try
     if doc.Modified then
-      if MessageDlg('RottenText',
+      if RtMessageDlg('RottenText',
           Format('Reopening %s will discard unsaved changes. Continue?',
             [doc.DisplayName]),
           mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
