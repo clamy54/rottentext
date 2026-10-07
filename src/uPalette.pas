@@ -242,6 +242,10 @@ begin
   if w > Parent.ClientWidth - 40 then w := Parent.ClientWidth - 40;
   if w < 220 then w := 220;
   SetBounds((Parent.ClientWidth - w) div 2, 30, w, 100);
+  {$IFDEF LCLGtk3}
+  // GTK3: hauteur minimale du theme
+  FEdit.Constraints.MaxHeight := EDIT_H - 4;
+  {$ENDIF}
   FEdit.SetBounds(PAD + 4, PAD + 2, w - 2 * PAD - 8, EDIT_H - 4);
   FEdit.Text := '';
   Refilter;

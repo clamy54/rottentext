@@ -42,7 +42,7 @@ makedepends=('fpc' 'imagemagick')
 
 # L'archive d'un tag ne contient pas les sous-modules: RottenUI vient a part,
 # au commit que le sous-module epingle. A REALIGNER quand il bouge.
-_uicommit=bdf70acfa46d749213cad96e9ba007e2ba427a13
+_uicommit=b622b1995fecb29eebea729486fd67d21bf8c5b1
 _lazcommit=39a5eec43c6846e8d63cbb6c5fd263db38c4ea5b
 
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"

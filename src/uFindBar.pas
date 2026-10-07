@@ -104,6 +104,10 @@ constructor TFindBar.Create(AOwner: TComponent);
     // sans ca le TEdit re-impose sa hauteur: "ChangeBounds loop detected"
     Result.AutoSize := False;
     Result.BorderStyle := bsNone;
+    {$IFDEF LCLGtk3}
+    // GTK3: hauteur minimale du theme
+    Result.Constraints.MaxHeight := TGL_SZ - 6;
+    {$ENDIF}
     Result.Color := clBorder;
     Result.Font.Name := RSUiFontName;
     Result.Font.Size := 10;
