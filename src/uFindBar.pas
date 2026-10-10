@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, Types, Controls, Graphics, StdCtrls, Forms, ExtCtrls,
   LCLType, LCLIntf, LazUTF8, SynEdit, SynEditTypes, uTheme, uDocumentManager,
-  uDocument, uHexView;
+  uDocument, uHexView, uCsvView;
 
 type
   TMatchInfoEvent = procedure(const AInfo: string) of object;
@@ -44,6 +44,11 @@ type
     function ActiveSyn: TSynEdit;
     function ActiveHex: THexView;
     function InHexMode: Boolean;
+    function ActiveCsv: TCsvView;
+    function InCsvMode: Boolean;
+    procedure CsvFind(ABack: Boolean);
+    procedure CsvReplaceNext;
+    procedure CsvReplaceAll;
     function HexPattern(const S: string; out ABytes: TBytes): Boolean;
     function MarkMatches(AHex: THexView; const APat: TBytes): Boolean;
     procedure HexFind(ABack: Boolean; AFrom: Int64 = -1);
@@ -155,10 +160,53 @@ end;
 function TFindBar.ActiveSyn: TSynEdit;
 begin
   // le SynEdit d'un doc hex est cache et vide: ne jamais chercher dedans
-  if (FMgr <> nil) and (FMgr.ActiveDoc <> nil) and not FMgr.ActiveDoc.IsHex then
+  if (FMgr <> nil) and (FMgr.ActiveDoc <> nil) and FMgr.ActiveDoc.IsText then
     Result := FMgr.ActiveDoc.View.Syn
   else
     Result := nil;
+end;
+
+function TFindBar.ActiveCsv: TCsvView;
+begin
+  if (FMgr <> nil) and (FMgr.ActiveDoc <> nil) and FMgr.ActiveDoc.IsCsv then
+    Result := FMgr.ActiveDoc.CsvView
+  else
+    Result := nil;
+end;
+
+function TFindBar.InCsvMode: Boolean;
+begin
+  Result := ActiveCsv <> nil;
+end;
+
+// ------------------------------------------------------------ recherche table
+
+procedure TFindBar.CsvFind(ABack: Boolean);
+var
+  cv: TCsvView;
+begin
+  cv := ActiveCsv;
+  if (cv = nil) or (FFindEdit.Text = '') then Exit;
+  SetNotFound(not cv.FindNext(FFindEdit.Text, FOptCase, FOptWord, ABack, FOptWrap));
+end;
+
+procedure TFindBar.CsvReplaceNext;
+var
+  cv: TCsvView;
+begin
+  cv := ActiveCsv;
+  if (cv = nil) or (FFindEdit.Text = '') then Exit;
+  cv.ReplaceCurrent(FFindEdit.Text, FReplaceEdit.Text, FOptCase, FOptWord);
+  CsvFind(False);
+end;
+
+procedure TFindBar.CsvReplaceAll;
+var
+  cv: TCsvView;
+begin
+  cv := ActiveCsv;
+  if (cv = nil) or (FFindEdit.Text = '') then Exit;
+  SetNotFound(cv.ReplaceAll(FFindEdit.Text, FReplaceEdit.Text, FOptCase, FOptWord) = 0);
 end;
 
 function TFindBar.ActiveHex: THexView;
@@ -492,8 +540,11 @@ begin
     DrawToggle(0, FToggleR[0], FOptCase, FHot = 0);
     DrawToggle(1, FToggleR[1], FOptWord, FHot = 1);
     DrawToggle(2, FToggleR[2], FOptWrap, FHot = 2);
-    DrawToggle(3, FToggleR[3], FOptInSel, FHot = 3);
-    DrawToggle(4, FToggleR[4], FOptHighlight, FHot = 4);
+    if not InCsvMode then // pas de region ni de surlignage dans une table
+    begin
+      DrawToggle(3, FToggleR[3], FOptInSel, FHot = 3);
+      DrawToggle(4, FToggleR[4], FOptHighlight, FHot = 4);
+    end;
   end;
 
   R := FFindEdit.BoundsRect;
@@ -510,7 +561,7 @@ begin
 
   if FReplaceMode then
   begin
-    if not InHexMode then
+    if not (InHexMode or InCsvMode) then
       DrawToggle(5, FPresR, FOptPreserve, FHot = 5);
     R := FReplaceEdit.BoundsRect;
     InflateRect(R, 4, 3);
@@ -557,8 +608,8 @@ begin
   else
   begin
     for i := 0 to 4 do
-      if PtInRect(FToggleR[i], pt) then Exit(i);
-    if FReplaceMode and PtInRect(FPresR, pt) then Exit(5);
+      if ((i <= 2) or not InCsvMode) and PtInRect(FToggleR[i], pt) then Exit(i);
+    if FReplaceMode and not InCsvMode and PtInRect(FPresR, pt) then Exit(5);
   end;
   for i := 0 to 3 do
     if ((i < 2) or FReplaceMode) and PtInRect(FBtnR[i], pt) then Exit(10 + i);
@@ -708,6 +759,11 @@ begin
       SetNotFound(not ParseHexBytes(FFindEdit.Text, b));
     Exit; // pas de highlight en vue hex
   end;
+  if InCsvMode then
+  begin
+    if Sender = FFindEdit then ActiveCsv.InvalidateMatch;
+    Exit;
+  end;
   UpdateHighlight;
   RecountMatches;
 end;
@@ -738,7 +794,7 @@ var
   info: string;
 begin
   if not Assigned(FOnMatchInfo) then Exit;
-  if InHexMode or (not Visible) or (FFindEdit.Text = '') then
+  if InHexMode or InCsvMode or (not Visible) or (FFindEdit.Text = '') then
   begin
     FOnMatchInfo('');
     Exit;
@@ -910,6 +966,11 @@ begin
     HexFind(False);
     Exit;
   end;
+  if InCsvMode then
+  begin
+    CsvFind(False);
+    Exit;
+  end;
   syn := ActiveSyn;
   if (syn = nil) or (FFindEdit.Text = '') then Exit;
   if syn.SelAvail then start := syn.BlockEnd else start := syn.LogicalCaretXY; // SearchReplaceEx compare en octets
@@ -934,6 +995,11 @@ begin
   if InHexMode then
   begin
     HexFind(True);
+    Exit;
+  end;
+  if InCsvMode then
+  begin
+    CsvFind(True);
     Exit;
   end;
   syn := ActiveSyn;
@@ -1017,6 +1083,11 @@ begin
     HexReplaceNext;
     Exit;
   end;
+  if InCsvMode then
+  begin
+    CsvReplaceNext;
+    Exit;
+  end;
   syn := ActiveSyn;
   if (syn = nil) or (FFindEdit.Text = '') then Exit;
   if syn.SelAvail and SelMatches(syn) and
@@ -1045,6 +1116,11 @@ begin
   if InHexMode then
   begin
     HexReplaceAll;
+    Exit;
+  end;
+  if InCsvMode then
+  begin
+    CsvReplaceAll;
     Exit;
   end;
   syn := ActiveSyn;
@@ -1133,6 +1209,11 @@ begin
   begin
     hx.SetMark(-1, 0);
     if hx.CanFocus then hx.SetFocus;
+    Exit;
+  end;
+  if (ActiveCsv <> nil) and ActiveCsv.CanFocus then
+  begin
+    ActiveCsv.SetFocus;
     Exit;
   end;
   syn := ActiveSyn;

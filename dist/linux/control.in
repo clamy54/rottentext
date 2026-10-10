@@ -16,5 +16,5 @@ Description: RottenText - a text editor with a sysadmin toolbox
  Podman Quadlet, Terraform - all in-process, no external dependency.
  .
  Free software under GPL v3 or later. Embeds the Monaspace and JetBrains Mono Nerd
- Font fonts (SIL OFL 1.1); see
+ Font fonts (SIL OFL 1.1) and Hack Nerd Font (MIT, Bitstream Vera License); see
  /usr/share/doc/rottentext/LICENSE_THIRD_PARTIES.md

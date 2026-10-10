@@ -8,14 +8,16 @@ Two things every package must carry, whatever the platform:
 - **`syntax/` must sit next to the executable.** The loader
   resolves it as `ExtractFilePath(ParamStr(0)) + 'syntax'` —
   nowhere else. A missing `syntax/` means no syntax highlighting. Themes and
-  fonts are *not* needed at runtime: the themes, the 20 Monaspace TTFs and the 4
-  JetBrains Mono Nerd Font TTFs are compiled into the binary as resources.
+  fonts are *not* needed at runtime: the themes, the 20 Monaspace TTFs, the 4
+  JetBrains Mono Nerd Font TTFs and the 4 Hack Nerd Font TTFs are compiled into
+  the binary as resources.
 - **The licenses.** Because those fonts live *inside* the executable, the SIL
-  OFL requires its text to travel with any distribution, including binary-only
-  ones. Every packaging below ships `licenses/OFL-1.1-Monaspace.txt`,
-  `licenses/OFL-1.1-JetBrainsMono.txt`, `licenses/MIT-Tabler.txt` (the icons of
-  the interface kit), `LICENSE` and `LICENSE_THIRD_PARTIES.md`. Do not drop
-  them.
+  OFL, the MIT License and the Bitstream Vera License require their text to
+  travel with any distribution, including binary-only ones. Every packaging
+  below ships `licenses/OFL-1.1-Monaspace.txt`,
+  `licenses/OFL-1.1-JetBrainsMono.txt`, `licenses/MIT-BitstreamVera-Hack.txt`,
+  `licenses/MIT-Tabler.txt` (the icons of the interface kit), `LICENSE` and
+  `LICENSE_THIRD_PARTIES.md`. Do not drop them.
 
 The version comes from `RT_VERSION` in `src/uMain.pas` — the single source of
 truth, also shown in `Help > About`. All three packagings extract it themselves;
@@ -37,7 +39,7 @@ directory, plus Start Menu (and optional desktop) shortcuts.
 
 The wizard's **License Agreement** page shows `LICENSE` (GPL-3) — the license of
 RottenText itself, the one the user accepts. The **Information** page right after
-shows the third-party inventory: embedded Monaspace and JetBrains Mono fonts,
+shows the third-party inventory: embedded Monaspace, JetBrains Mono and Hack fonts,
 LCL, FPC, SynEdit.
 
 Showing it is a courtesy, not an obligation — what the licenses require is that

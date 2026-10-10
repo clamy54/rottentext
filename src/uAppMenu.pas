@@ -10,7 +10,8 @@ interface
 
 uses
   Classes, SysUtils, Controls, Menus, LCLType, Forms,
-  uActions, uHighlight, uEditorView, uEncoding, uRecent, uThemeLoad, uMenuBar;
+  uActions, uHighlight, uEditorView, uCsvView, uEncoding, uRecent, uThemeLoad, uMenuBar,
+  uDocument;
 
 type
   TAppMenu = class(TComponent)
@@ -20,6 +21,10 @@ type
     FBar: TRSMenuBar;
     FFileRoot: TMenuItem;
     FRecentSub: TMenuItem;
+    // entrees sans objet hors de leur vue: grisees au changement d'onglet
+    FTextOnly, FHexOnly, FSelOnly: TList; // FSelOnly: texte ou table
+    function TextOnly(AItem: TMenuItem): TMenuItem;
+    function SelOnly(AItem: TMenuItem): TMenuItem;
     procedure BuildMenus;
     procedure FileMenuPopup(Sender: TObject);
     function AddMenu(const ATitle: string): TMenuItem;
@@ -28,6 +33,9 @@ type
     procedure AddSep(AParent: TMenuItem);
   public
     constructor Create(AOwner: TComponent; AActions: TAppActions); reintroduce;
+    destructor Destroy; override;
+    // onglet actif texte / hex / table: on grise ce qui ne s'y applique pas
+    procedure UpdateContext(ADoc: TDocument);
     // barre dessinee du kit: les items partent dans ses popups
     procedure AttachBar(ABar: TRSMenuBar);
     {$IFDEF DARWIN}
@@ -44,11 +52,53 @@ implementation
 
 const
   WRAP_COLS: array[0..10] of Integer = (40, 70, 72, 74, 76, 78, 80, 90, 100, 110, 120);
+  CSV_OPEN: array[0..2] of string = ('Open .csv: Ask', 'Open .csv as Text', 'Open .csv as Table');
+  TABLE_OPS: array[0..14] of string = ('Select Row', 'Select Column', '-',
+    'Insert Row Above', 'Insert Row Below', 'Insert Column Left', 'Insert Column Right', '-',
+    'Duplicate Rows/Columns', 'Delete Rows/Columns', '-',
+    'Move Up / Left', 'Move Down / Right', 'Sort Ascending', 'Sort Descending');
+  TABLE_TAGS: array[0..14] of Integer = (1, 2, 0, 3, 4, 5, 6, 0, 7, 8, 0, 9, 10, 11, 12);
+
+function TAppMenu.TextOnly(AItem: TMenuItem): TMenuItem;
+begin
+  FTextOnly.Add(AItem);
+  Result := AItem;
+end;
+
+function TAppMenu.SelOnly(AItem: TMenuItem): TMenuItem;
+begin
+  FSelOnly.Add(AItem);
+  Result := AItem;
+end;
+
+destructor TAppMenu.Destroy;
+begin
+  FTextOnly.Free;
+  FHexOnly.Free;
+  FSelOnly.Free;
+  inherited Destroy;
+end;
+
+procedure TAppMenu.UpdateContext(ADoc: TDocument);
+var
+  i: Integer;
+  txt, hex: Boolean;
+begin
+  txt := (ADoc = nil) or ADoc.IsText;
+  hex := (ADoc <> nil) and ADoc.IsHex;
+  for i := 0 to FTextOnly.Count - 1 do TMenuItem(FTextOnly[i]).Enabled := txt;
+  for i := 0 to FHexOnly.Count - 1 do TMenuItem(FHexOnly[i]).Enabled := hex;
+  for i := 0 to FSelOnly.Count - 1 do TMenuItem(FSelOnly[i]).Enabled := not hex;
+  if FBar <> nil then FBar.Invalidate;
+end;
 
 constructor TAppMenu.Create(AOwner: TComponent; AActions: TAppActions);
 begin
   inherited Create(AOwner);
   FActions := AActions;
+  FTextOnly := TList.Create;
+  FHexOnly := TList.Create;
+  FSelOnly := TList.Create;
   // proprietaire = Self, pas le form: la LCL auto-assignerait Form.Menu et
   // poserait un menu natif EN PLUS de la barre dessinee
   FMenu := TMainMenu.Create(Self);
@@ -115,6 +165,8 @@ begin
   FFileRoot := m;
   sub := AddItem(m, 'Reopen with Encoding', nil);
   AddEncodings(sub, @A.FileReopenWithEncoding, @A.FileReopenHex);
+  AddItem(sub, 'CSV Table', @A.FileReopenCsv);
+  AddItem(sub, 'Plain Text', @A.FileReopenText);
   AddSep(m);
   mi := AddItem(m, 'Split View', @A.ViewSplit);
   A.SetSplitItem(mi);
@@ -126,7 +178,7 @@ begin
   AddItem(m, 'Save As...', @A.FileSaveAs, ShortCut(Word('S'), [ssModifier, ssShift]));
   AddItem(m, 'Save All', @A.FileSaveAll);
   AddSep(m);
-  AddItem(m, 'Print...', @A.FilePrint);
+  TextOnly(AddItem(m, 'Print...', @A.FilePrint));
   AddSep(m);
   AddItem(m, 'New Window', @A.FileNewWindow, ShortCut(Word('N'), [ssModifier, ssShift]));
   AddItem(m, 'Close Window', @A.FileCloseWindow, ShortCut(Word('W'), [ssModifier, ssShift]));
@@ -147,27 +199,38 @@ begin
   AddItem(m, 'Cut', @A.EditCut, ShortCut(Word('X'), [ssModifier]));
   AddItem(m, 'Copy', @A.EditCopy, ShortCut(Word('C'), [ssModifier]));
   AddItem(m, 'Paste', @A.EditPaste, ShortCut(Word('V'), [ssModifier]));
-  AddItem(m, 'Paste and Indent', @A.EditPasteIndent, ShortCut(Word('V'), [ssModifier, ssShift]));
+  TextOnly(AddItem(m, 'Paste and Indent', @A.EditPasteIndent, ShortCut(Word('V'), [ssModifier, ssShift])));
   mi := AddItem(m, 'Copy on Select', @A.EditCopyOnSelect);
   mi.Checked := RTCopyOnSelect;
   AddSep(m);
-  sub := AddItem(m, 'Line', nil);
+  sub := TextOnly(AddItem(m, 'Line', nil));
   AddItem(sub, 'Indent', @A.EditIndent, ShortCut(VK_OEM_6, [ssModifier]));
   AddItem(sub, 'Unindent', @A.EditUnindent, ShortCut(VK_OEM_4, [ssModifier]));
   AddItem(sub, 'Delete Line', @A.EditDeleteLine, ShortCut(Word('K'), [ssModifier, ssShift]));
-  sub := AddItem(m, 'Comment', nil);
+  sub := TextOnly(AddItem(m, 'Comment', nil));
   AddItem(sub, 'Toggle Comment', @A.EditToggleComment, ShortCut(VK_OEM_2, [ssModifier]));
-  sub := AddItem(m, 'Convert Case', nil);
+  sub := SelOnly(AddItem(m, 'Convert Case', nil));
   AddItem(sub, 'Upper Case', @A.EditUpperCase);
   AddItem(sub, 'Lower Case', @A.EditLowerCase);
   AddItem(sub, 'Title Case', @A.EditTitleCase);
   AddItem(sub, 'Swap Case', @A.EditSwapCase);
-  AddItem(m, 'Convert Tabs to Spaces', @A.EditExpandTabs);
+  TextOnly(AddItem(m, 'Convert Tabs to Spaces', @A.EditExpandTabs));
   AddSep(m);
-  AddItem(m, 'Sort Lines', @A.EditSortLines, ShortCut(VK_F9, []));
+  TextOnly(AddItem(m, 'Sort Lines', @A.EditSortLines, ShortCut(VK_F9, [])));
+  AddSep(m);
+  // onglet table seulement; raccourcis dans la grille: Maj+Espace, Ctrl+Espace,
+  // Inser, Suppr, Alt+fleches, clic droit sur une tete de colonne = tri
+  sub := AddItem(m, 'Table', nil);
+  A.SetTableMenu(sub);
+  for i := 0 to High(TABLE_OPS) do
+  begin
+    if TABLE_OPS[i] = '-' then begin AddSep(sub); Continue; end;
+    mi := AddItem(sub, TABLE_OPS[i], @A.TableOp);
+    mi.Tag := TABLE_TAGS[i];
+  end;
 
   // Selection
-  m := AddMenu('Selection');
+  m := TextOnly(AddMenu('Selection'));
   AddItem(m, 'Split into Lines', @A.SelSplitLines, ShortCut(Word('L'), [ssModifier, ssShift]));
   AddItem(m, 'Single Selection', @A.SelSingle, ShortCut(VK_ESCAPE, []));
   AddSep(m);
@@ -191,8 +254,8 @@ begin
   AddItem(m, 'Replace Next', @A.ReplaceNext);
   AddItem(m, 'Replace All', @A.ReplaceAll);
   AddSep(m);
-  // vue hex seulement (no-op sur un doc texte)
-  AddItem(m, 'Goto Offset...', @A.FindGotoOffset, ShortCut(Word('G'), [ssModifier]));
+  // vue hex seulement
+  FHexOnly.Add(AddItem(m, 'Goto Offset...', @A.FindGotoOffset, ShortCut(Word('G'), [ssModifier])));
 
   // View
   m := AddMenu('View');
@@ -212,7 +275,7 @@ begin
     end;
   end;
   AddItem(m, 'Font...', @A.ViewFont);
-  sub := AddItem(m, 'Syntax', nil);
+  sub := TextOnly(AddItem(m, 'Syntax', nil));
   mi := AddItem(sub, 'Plain Text', @A.SetSyntax); mi.Tag := 0;
   AddSep(sub);
   for i := 0 to SyntaxCount - 1 do
@@ -220,7 +283,7 @@ begin
     mi := AddItem(sub, SyntaxDisplayName(i), @A.SetSyntax);
     mi.Tag := i + 1;
   end;
-  sub := AddItem(m, 'Tab Width', nil);
+  sub := TextOnly(AddItem(m, 'Tab Width', nil));
   for i := 1 to 8 do
   begin
     mi := AddItem(sub, IntToStr(i), @A.ViewTabWidth);
@@ -230,9 +293,9 @@ begin
     mi.Checked := (i = RTTabWidth);
   end;
   AddSep(m);
-  mi := AddItem(m, 'Word Wrap', @A.ViewWordWrap);
+  mi := TextOnly(AddItem(m, 'Word Wrap', @A.ViewWordWrap));
   mi.Checked := RTWordWrap;
-  sub := AddItem(m, 'Word Wrap Column', nil);
+  sub := TextOnly(AddItem(m, 'Word Wrap Column', nil));
   mi := AddItem(sub, 'Automatic', @A.ViewWrapColumn);
   mi.Tag := 0;
   mi.RadioItem := True;
@@ -247,13 +310,26 @@ begin
     mi.GroupIndex := 2;
     mi.Checked := (RTWrapColumn = WRAP_COLS[i]);
   end;
-  mi := AddItem(m, 'Show Invisibles', @A.ViewShowInvisibles);
+  mi := TextOnly(AddItem(m, 'Show Invisibles', @A.ViewShowInvisibles));
   mi.Checked := RTShowInvisibles;
-  mi := AddItem(m, 'Map Tab to Space', @A.ViewMapTabToSpace);
+  mi := TextOnly(AddItem(m, 'Map Tab to Space', @A.ViewMapTabToSpace));
   mi.Checked := RTMapTabToSpace;
+  AddSep(m);
+  sub := AddItem(m, 'CSV Table', nil);
+  mi := AddItem(sub, 'First Row is Header', @A.ViewCsvHeader);
+  A.SetCsvHeaderItem(mi);
+  AddSep(sub);
+  for i := 0 to 2 do
+  begin
+    mi := AddItem(sub, CSV_OPEN[i], @A.ViewCsvOpen);
+    mi.Tag := i;
+    mi.RadioItem := True;
+    mi.GroupIndex := 42;
+    mi.Checked := (RTCsvOpen = i);
+  end;
 
   // Macro
-  m := AddMenu('Macro');
+  m := SelOnly(AddMenu('Macro'));
   mi := AddItem(m, 'Record Macro', @A.MacroToggleRecord, ShortCut(Word('M'), [ssModifier]));
   sub := AddItem(m, 'Playback Macro', @A.MacroPlayback, ShortCut(Word('M'), [ssModifier, ssShift]));
   A.SetMacroItems(mi, sub);
@@ -480,6 +556,18 @@ begin
   mi := AddItem(sub, 'Deltas Between Timestamps', @A.ToolsLog); mi.Tag := 3;
   mi := AddItem(sub, 'Summary (Top Errors / IPs / Status)', @A.ToolsLog); mi.Tag := 4;
   AddItem(m, 'Diff vs File...', @A.ToolsDiff);
+
+  // tout Tools travaille sur le texte de l'editeur, sauf la palette; ce qui
+  // transforme une selection marche aussi sur les cellules d'une table
+  for i := 0 to m.Count - 1 do
+    if (m.Items[i].Caption <> '-') and (m.Items[i].OnClick <> @A.ViewCommandPalette) then
+    begin
+      if (m.Items[i].Caption = 'Hash Selection') or (m.Items[i].Caption = 'HMAC of Selection...') or
+         (m.Items[i].Caption = 'Encode / Decode') or (m.Items[i].Caption = 'Escape Selection For') then
+        SelOnly(m.Items[i])
+      else
+        TextOnly(m.Items[i]);
+    end;
 
   // Help
   m := AddMenu('Help');

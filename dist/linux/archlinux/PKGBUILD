@@ -109,9 +109,10 @@ EOF
     chmod 0644 "$pkgdir/usr/share/icons/hicolor/${_s}x${_s}/apps/$pkgname.png"
   done
 
-  # Monaspace et JetBrains Mono sont COMPILEES DANS le binaire (RCDATA): l'OFL
-  # impose que son texte accompagne meme une distribution binaire seule, d'ou
-  # la licence tierce ici et pas seulement le copyright du projet.
+  # Monaspace, JetBrains Mono et Hack sont COMPILEES DANS le binaire (RCDATA):
+  # l'OFL, le MIT et la Bitstream Vera imposent que leur texte accompagne meme
+  # une distribution binaire seule, d'ou les licences tierces ici et pas
+  # seulement le copyright du projet.
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 LICENSE_THIRD_PARTIES.md \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE_THIRD_PARTIES.md"
@@ -119,6 +120,8 @@ EOF
     "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-Monaspace.txt"
   install -Dm644 licenses/OFL-1.1-JetBrainsMono.txt \
     "$pkgdir/usr/share/licenses/$pkgname/OFL-1.1-JetBrainsMono.txt"
+  install -Dm644 licenses/MIT-BitstreamVera-Hack.txt \
+    "$pkgdir/usr/share/licenses/$pkgname/MIT-BitstreamVera-Hack.txt"
   install -Dm644 licenses/MIT-Tabler.txt \
     "$pkgdir/usr/share/licenses/$pkgname/MIT-Tabler.txt"
 }

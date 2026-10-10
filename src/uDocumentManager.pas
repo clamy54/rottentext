@@ -51,7 +51,8 @@ type
     constructor Create(AHost: TWinControl);
     destructor Destroy; override;
     function NewFile(AGroup: Integer = -1): TDocument; // -1 = groupe actif
-    function OpenFile(const AFileName: string): TDocument;
+    // AAsk: proposer la table pour un .csv (pas pour la session restauree)
+    function OpenFile(const AFileName: string; AAsk: Boolean = True): TDocument;
     procedure OpenDialog;
     procedure Activate(AIndex: Integer);
     procedure ActivateNext;
@@ -68,6 +69,8 @@ type
     procedure SaveActiveWithEncoding(AEnc: Integer);
     procedure ReopenActiveWithEncoding(AEnc: Integer);
     procedure ReopenActiveHex;
+    procedure ReopenActiveCsv;
+    procedure ReopenActiveText;
     function SaveAll: Boolean; // False si un Save As a ete annule
     procedure RevertActive;
     procedure CheckExternalChanges;
@@ -98,7 +101,7 @@ implementation
 
 uses
   // verrou d'action: un dialogue natif n'incremente pas forcement ModalLevel
-  uActions, uEncoding, uRtSafeSave, uRtMessage;
+  uActions, uEncoding, uRtSafeSave, uRtMessage, uCsv, uCsvView;
 
 constructor TDocumentManager.Create(AHost: TWinControl);
 begin
@@ -239,7 +242,7 @@ end;
 
 function IsBlankDoc(ADoc: TDocument): Boolean;
 begin
-  Result := ADoc.Untitled and not ADoc.Modified and not ADoc.IsHex and
+  Result := ADoc.Untitled and not ADoc.Modified and ADoc.IsText and
      (ADoc.View.Syn.Lines.Count <= 1) and
      ((ADoc.View.Syn.Lines.Count = 0) or (ADoc.View.Syn.Lines[0] = ''));
 end;
@@ -258,17 +261,37 @@ end;
 // pas sur un gros fichier: l'attache scanne tout le buffer, SYNCHRONE (~6,5 s / 1M lignes)
 procedure ApplyAutoSyntax(ADoc: TDocument; const AFileName: string);
 begin
-  if ADoc.IsHex or ADoc.LargeFile then Exit;
+  if (not ADoc.IsText) or ADoc.LargeFile then Exit;
   ADoc.View.Syn.Highlighter := HighlighterForFile(AFileName);
 end;
 
-function TDocumentManager.OpenFile(const AFileName: string): TDocument;
+// un .csv part en table selon le reglage, sinon on demande. Cancel = texte.
+function CsvWanted(const AFileName: string): Boolean;
+begin
+  case RTCsvOpen of
+    1: Exit(False);
+    2: Exit(True);
+  end;
+  BeginActionModal;
+  try
+    Result := RtQuestionDlg('RottenText',
+      Format('%s looks like CSV.' + LineEnding + 'Open it as a table or as plain text?',
+        [ExtractFileName(AFileName)]),
+      mtConfirmation, [mrYes, 'Table', mrNo, 'Text']) = mrYes;
+  finally
+    EndActionModal;
+  end;
+end;
+
+function TDocumentManager.OpenFile(const AFileName: string; AAsk: Boolean): TDocument;
 var
   idx: Integer;
   large, created: Boolean;
   blank: TDocument;
   sr: TSearchRec;
+  fsize: Int64;
 begin
+  fsize := 0;
   // macOS: le panneau Open laisse choisir un .app/.bundle, qui est un DOSSIER
   if DirectoryExists(AFileName) then
   begin
@@ -291,6 +314,7 @@ begin
   if SysUtils.FindFirst(AFileName, faAnyFile, sr) = 0 then
   begin
     large := sr.Size >= LargeFileBytes;
+    fsize := sr.Size;
     SysUtils.FindClose(sr);
   end;
   // onglet vierge reutilise, sauf gros fichier: sa vue a deja le plugin wrap
@@ -323,6 +347,17 @@ begin
     idx := FDocs.IndexOf(blank);
     if idx >= 0 then RemoveAt(idx);
   end;
+  // trop gros pour une table: pas la peine de poser la question
+  if AAsk and Result.IsText and IsCsvName(AFileName) and
+     (fsize <= CsvTableMaxBytes) and CsvWanted(AFileName) then
+    try
+      Result.OpenCsv(AFileName, Result.Encoding);
+    except
+      on E: Exception do
+        RtMessageDlg('RottenText',
+          Format('Cannot open %s as a table.' + LineEnding + '%s', [AFileName, E.Message]),
+          mtError, [mbOK], 0); // reste en texte
+    end;
   // avant Activate: la minimap lit le highlighter au bind
   ApplyAutoSyntax(Result, AFileName);
   RecentAdd(AFileName);
@@ -788,7 +823,7 @@ procedure TDocumentManager.ReloadPreservingCaret(ADoc: TDocument);
 var
   cx, cy, top: Integer;
 begin
-  if ADoc.IsHex then
+  if not ADoc.IsText then
   begin
     ADoc.Revert;
     Exit;
@@ -921,7 +956,7 @@ begin
           Format('Reopening %s will discard unsaved changes. Continue?',
             [doc.DisplayName]),
           mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
-    wasHex := doc.IsHex;
+    wasHex := not doc.IsText;
     // le load libere la vue hex FOCUSEE -> Activate reentrant sans ce verrou
     Inc(FShowLock);
     try
@@ -957,15 +992,65 @@ begin
           Format('Reopening %s will discard unsaved changes. Continue?',
             [doc.DisplayName]),
           mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
+    // OpenHex libere une vue table focusee: meme verrou que les autres reopen
+    Inc(FShowLock);
     try
-      doc.OpenHex(doc.FileName);
-    except
-      on E: Exception do begin DiskActionFailed(doc, E); Exit; end;
+      try
+        doc.OpenHex(doc.FileName);
+      except
+        on E: Exception do begin DiskActionFailed(doc, E); Exit; end;
+      end;
+    finally
+      Dec(FShowLock);
     end;
     Activate(FDocs.IndexOf(doc));
   finally
     EndActionModal;
   end;
+end;
+
+procedure TDocumentManager.ReopenActiveCsv;
+var
+  doc: TDocument;
+  enc: Integer;
+begin
+  doc := ActiveDoc;
+  if (doc = nil) or doc.Untitled or not FileExists(doc.FileName) then Exit;
+  if doc.IsCsv then Exit;
+  BeginActionModal;
+  try
+    if doc.Modified then
+      if RtMessageDlg('RottenText',
+          Format('Reopening %s will discard unsaved changes. Continue?',
+            [doc.DisplayName]),
+          mtConfirmation, [mbYes, mbCancel], 0) <> mrYes then Exit;
+    if doc.IsHex then enc := -1 else enc := doc.Encoding;
+    Inc(FShowLock);
+    try
+      try
+        doc.OpenCsv(doc.FileName, enc);
+      except
+        on E: Exception do begin DiskActionFailed(doc, E); Exit; end;
+      end;
+    finally
+      Dec(FShowLock);
+    end;
+    Activate(FDocs.IndexOf(doc));
+  finally
+    EndActionModal;
+  end;
+end;
+
+procedure TDocumentManager.ReopenActiveText;
+var
+  doc: TDocument;
+begin
+  doc := ActiveDoc;
+  if (doc = nil) or doc.IsText then Exit;
+  if doc.IsCsv then
+    ReopenActiveWithEncoding(doc.Encoding)
+  else
+    ReopenActiveWithEncoding(-1);
 end;
 
 function TDocumentManager.SaveAll: Boolean;
@@ -1001,6 +1086,12 @@ begin
     ADoc.HexView.Owner.RemoveComponent(ADoc.HexView);
     AHost.InsertComponent(ADoc.HexView);
     ADoc.HexView.Parent := AHost;
+  end;
+  if ADoc.CsvView <> nil then
+  begin
+    ADoc.CsvView.Owner.RemoveComponent(ADoc.CsvView);
+    AHost.InsertComponent(ADoc.CsvView);
+    ADoc.CsvView.Parent := AHost;
   end;
 end;
 

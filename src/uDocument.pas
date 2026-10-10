@@ -7,7 +7,7 @@ interface
 uses
   {$IFDEF UNIX}BaseUnix,{$ENDIF}
   Classes, SysUtils, Controls, LazUTF8, uEditorView, uEncoding, uHexView,
-  uRtSafeSave, uEol;
+  uCsv, uCsvView, uRtSafeSave, uEol;
 
 const
   // au-dela: mode gros fichier (ni coloration auto ni wrap a l'ouverture)
@@ -23,6 +23,7 @@ type
   private
     FView: TEditorView;
     FHex: THexView; // nil = doc texte
+    FCsv: TCsvView; // nil = pas une table
     FFileName: string;
     FModified: Boolean;
     FUntitled: Boolean;
@@ -49,6 +50,7 @@ type
     FOnFocus: TNotifyEvent;
     procedure SynChanged(Sender: TObject);
     procedure HexEdited(Sender: TObject);
+    procedure CsvEdited(Sender: TObject);
     procedure ViewEntered(Sender: TObject);
     procedure SetModified(AValue: Boolean);
     procedure SetEol(AValue: TEolKind);
@@ -61,17 +63,22 @@ type
     // AEnc = -1: auto-detection
     procedure LoadFromFileEnc(const AFileName: string; AEnc: Integer);
     procedure OpenHex(const AFileName: string);
+    // AEnc = -1: auto-detection
+    procedure OpenCsv(const AFileName: string; AEnc: Integer = -1);
     procedure SaveToFile(const AFileName: string);
     procedure Revert;
     procedure CaptureDiskState;
     function CheckDiskChange: TDiskChange;
     procedure MarkOrphan; // fichier disparu, gardé en editeur: stop surveillance
     function IsHex: Boolean;
+    function IsCsv: Boolean;
+    function IsText: Boolean; // ni hex ni table: le SynEdit porte le doc
     procedure ShowDoc;
     procedure HideDoc;
     procedure FocusDoc;
     property View: TEditorView read FView;
     property HexView: THexView read FHex;
+    property CsvView: TCsvView read FCsv;
     property FileName: string read FFileName;
     property Untitled: Boolean read FUntitled;
     property ReadOnly: Boolean read FReadOnly;
@@ -186,6 +193,7 @@ end;
 destructor TDocument.Destroy;
 begin
   FHex.Free;
+  FCsv.Free;
   FView.Free;
   inherited Destroy;
 end;
@@ -231,7 +239,7 @@ begin
   // chaque repaint, un blob colle en une ligne serait recopie en entier); 256
   // octets couvrent toujours 50 chars UTF-8.
   s := '';
-  if (not IsHex) and (FView.Syn.Lines.Count > 0) then
+  if IsText and (FView.Syn.Lines.Count > 0) then
     s := Trim(Copy(FView.Syn.Lines[0], 1, 256));
   if s = '' then
     Result := 'untitled'
@@ -305,6 +313,68 @@ begin
   finally
     FLoading := False;
   end;
+  FreeAndNil(FCsv);
+  FFileName := AFileName;
+  FUntitled := False;
+  FReadOnly := not FileWritable(AFileName);
+  FModified := False;
+  FView.Syn.Modified := False;
+  CaptureDiskState;
+  Changed;
+end;
+
+procedure TDocument.OpenCsv(const AFileName: string; AEnc: Integer);
+var
+  fs: TFileStream;
+  raw, txt: string;
+  host: TWinControl;
+  created: Boolean;
+begin
+  fs := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  try
+    // une chaine par cellule: le texte brut tient, la table non
+    if fs.Size > CsvTableMaxBytes then
+      raise EStreamError.CreateFmt('%s is too large to open as a table (max %d MB).',
+        [ExtractFileName(AFileName), CsvTableMaxBytes div (1024 * 1024)]);
+    SetLength(raw, fs.Size);
+    if raw <> '' then
+      fs.ReadBuffer(raw[1], Length(raw));
+  finally
+    fs.Free;
+  end;
+  if AEnc < 0 then AEnc := DetectEncoding(raw);
+  txt := DecodeToUTF8(raw, AEnc);
+  created := FCsv = nil;
+  if created then
+  begin
+    host := FView.Syn.Parent;
+    FCsv := TCsvView.Create(host);
+    FCsv.Visible := False;
+    FCsv.Align := alClient;
+    FCsv.Parent := host;
+    FCsv.OnEdited := @CsvEdited;
+    FCsv.OnEnter := @ViewEntered;
+  end;
+  try
+    FCsv.LoadText(txt, ExtractFileExt(AFileName), not created);
+  except
+    if created then FreeAndNil(FCsv);
+    raise;
+  end;
+  FEncoding := AEnc;
+  FOddTail := UTF16OddTail(raw, AEnc);
+  FTornLoad := False;
+  FEol := DetectEol(txt, PlatformEol);
+  FTrailingEol := (txt <> '') and (txt[Length(txt)] in [#10, #13]);
+  FLoading := True;
+  try
+    FView.Syn.ClearAll;
+    if FView.Syn.Lines.Count = 0 then
+      FView.Syn.Lines.Add('');
+  finally
+    FLoading := False;
+  end;
+  FreeAndNil(FHex);
   FFileName := AFileName;
   FUntitled := False;
   FReadOnly := not FileWritable(AFileName);
@@ -317,6 +387,26 @@ end;
 function TDocument.IsHex: Boolean;
 begin
   Result := FHex <> nil;
+end;
+
+function TDocument.IsCsv: Boolean;
+begin
+  Result := FCsv <> nil;
+end;
+
+function TDocument.IsText: Boolean;
+begin
+  Result := (FHex = nil) and (FCsv = nil);
+end;
+
+// pas de compteur d'edits cote table: une cellule remise a l'identique reste
+// une modif, tant pis
+procedure TDocument.CsvEdited(Sender: TObject);
+begin
+  if not FModified then
+    SetModified(True)
+  else
+    Changed;
 end;
 
 procedure TDocument.HexEdited(Sender: TObject);
@@ -339,6 +429,11 @@ begin
     FView.HideView;
     FHex.ShowView;
   end
+  else if IsCsv then
+  begin
+    FView.HideView;
+    FCsv.ShowView;
+  end
   else
   begin
     if FHex <> nil then FHex.HideView;
@@ -350,6 +445,7 @@ procedure TDocument.HideDoc;
 begin
   FView.HideView;
   if FHex <> nil then FHex.HideView;
+  if FCsv <> nil then FCsv.HideView;
 end;
 
 procedure TDocument.FocusDoc;
@@ -357,6 +453,10 @@ begin
   if IsHex then
   begin
     if FHex.CanFocus then FHex.SetFocus;
+  end
+  else if IsCsv then
+  begin
+    if FCsv.CanFocus then FCsv.SetFocus;
   end
   else if FView.Syn.CanFocus then
     FView.Syn.SetFocus;
@@ -444,6 +544,7 @@ begin
     FView.ApplyViewSettings;
   end;
   FreeAndNil(FHex); // Reopen with Encoding sur un doc hex: retour au texte
+  FreeAndNil(FCsv);
   FFileName := AFileName;
   FUntitled := False;
   FReadOnly := not FileWritable(AFileName);
@@ -470,28 +571,34 @@ begin
     Changed;
     Exit;
   end;
-  // buffer partiel d'un reload interrompu: sauver ecraserait le fichier intact
-  // par un fragment, et rien ne le signalerait (Modified=False, stamp inchange)
-  if FTornLoad then
-    raise EStreamError.CreateFmt(
-      'The last reload of %s was interrupted; the buffer may be incomplete.' +
-      LineEnding + 'Use File > Revert File before saving.', [DisplayName]);
   if FOddTail then
     raise EStreamError.CreateFmt(
       '%s is UTF-16 with a stray trailing byte; saving would drop it.' +
       LineEnding + 'Use File > Reopen > Hex to edit it.', [DisplayName]);
-  // Lines.Text sort en EOL plateforme: re-imposer celui du doc AVANT l'encodage
-  txt := FView.Syn.Lines.Text;
-  if not FTrailingEol then
+  if IsCsv then
+    txt := FCsv.Text(FTrailingEol, EolStr(FEol)) // les cellules gardent leurs sauts
+  else
   begin
-    // saut final synthetique de Lines.Text: en retirer UN seul, jamais les
-    // lignes vides volontaires de la fin du buffer
-    n := Length(txt);
-    if (n > 0) and (txt[n] = #10) then Dec(n);
-    if (n > 0) and (txt[n] = #13) then Dec(n);
-    SetLength(txt, n);
+    // buffer partiel d'un reload interrompu: sauver ecraserait le fichier intact
+    // par un fragment, et rien ne le signalerait (Modified=False, stamp inchange)
+    if FTornLoad then
+      raise EStreamError.CreateFmt(
+        'The last reload of %s was interrupted; the buffer may be incomplete.' +
+        LineEnding + 'Use File > Revert File before saving.', [DisplayName]);
+    // Lines.Text sort en EOL plateforme: re-imposer celui du doc AVANT l'encodage
+    txt := FView.Syn.Lines.Text;
+    if not FTrailingEol then
+    begin
+      // saut final synthetique de Lines.Text: en retirer UN seul, jamais les
+      // lignes vides volontaires de la fin du buffer
+      n := Length(txt);
+      if (n > 0) and (txt[n] = #10) then Dec(n);
+      if (n > 0) and (txt[n] = #13) then Dec(n);
+      SetLength(txt, n);
+    end;
   end;
-  raw := EncodeFromUTF8(ForceEol(txt, FEol), FEncoding);
+  if IsCsv then raw := EncodeFromUTF8(txt, FEncoding)
+  else raw := EncodeFromUTF8(ForceEol(txt, FEol), FEncoding);
   // sauver la CIBLE du lien: l'entree du lien n'est pas touchee, il survit
   target := ResolveLink(AFileName);
   if HasHardLinks(target) then
@@ -548,6 +655,11 @@ begin
     Changed;
     Exit;
   end;
+  if IsCsv then
+  begin
+    OpenCsv(FFileName, FEncoding);
+    Exit;
+  end;
   fs := TFileStream.Create(FFileName, fmOpenRead or fmShareDenyNone);
   try
     n := 4;
@@ -566,7 +678,8 @@ end;
 
 function TDocument.EncodingLossy: Boolean;
 begin
-  Result := (not IsHex) and (FView <> nil) and
+  if IsCsv then Exit(EncodingIsLossy(FCsv.Text(False), FEncoding));
+  Result := IsText and (FView <> nil) and
     EncodingIsLossy(FView.Syn.Lines.Text, FEncoding);
 end;
 

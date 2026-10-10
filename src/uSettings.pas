@@ -23,7 +23,7 @@ implementation
 
 uses
   Classes, SysUtils, fpjson, jsonparser, uJsonSafe, uRtSafeSave, uTheme, uThemeLoad,
-  uEditorView;
+  uEditorView, uCsvView;
 
 const
   MAX_SETTINGS_BYTES = 64 * 1024;
@@ -156,6 +156,7 @@ begin
           RTWrapColumn := ClampI(JInt(obj, 'wrapColumn', RTWrapColumn), 0, 1000);
           RTShowInvisibles := JBool(obj, 'showInvisibles', RTShowInvisibles);
           RTMapTabToSpace := JBool(obj, 'mapTabToSpace', RTMapTabToSpace);
+          RTCsvOpen := ClampI(JInt(obj, 'csvOpen', RTCsvOpen), 0, 2);
           RTCopyOnSelect := JBool(obj, 'copyOnSelect', RTCopyOnSelect);
           SetSideBarVisible := JBool(obj, 'sideBar', False);
           SetWinMax := JBool(obj, 'winMax', False);
@@ -198,6 +199,7 @@ begin
       obj.Add('wrapColumn', RTWrapColumn);
       obj.Add('showInvisibles', RTShowInvisibles);
       obj.Add('mapTabToSpace', RTMapTabToSpace);
+      obj.Add('csvOpen', RTCsvOpen);
       obj.Add('copyOnSelect', RTCopyOnSelect);
       obj.Add('sideBar', SetSideBarVisible);
       if SetWinValid then

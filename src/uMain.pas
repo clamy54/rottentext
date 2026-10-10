@@ -14,11 +14,11 @@ uses
   {$IFNDEF RT_NATIVE_MENU}uMenuBar,{$ENDIF} uAppMenu, uGroupTabs,
   uStatusBar, uMinimap, uScrollbar,
   uActions, uDocumentManager, uDocument, uEditorView, uHighlight, uFindBar,
-  uEncoding, uHexView, uSideBar, uSettings, uSession, uEol, uPalette,
+  uEncoding, uHexView, uCsvView, uSideBar, uSettings, uSession, uEol, uPalette,
   uInstance;
 
 const
-  RT_VERSION = '2.1';
+  RT_VERSION = '2.2';
 
 type
   TPaneUI = record
@@ -98,12 +98,14 @@ type
     procedure FormKeyDownHandler(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure HandleMacroState(Sender: TObject);
     procedure HandleHexCaret(Sender: TObject);
+    procedure HandleCsvCaret(Sender: TObject);
     function DocMutationBlocked: Boolean;
     procedure SessionTick(Sender: TObject);
     procedure ReportSessionWarning;
     procedure InstanceTick(Sender: TObject);
     procedure PendingOpenTick(Sender: TObject);
     procedure OpenDropped(const APath: string);
+    procedure RaiseWindow;
     procedure DropFilesHandler(Sender: TObject; const FileNames: array of string);
     procedure CaptureWindowSettings;
   public
@@ -118,6 +120,20 @@ implementation
 {$IFDEF DARWIN}
 uses
   CocoaAll{$IF lcl_fullversion >= 4080000}, uDarwinQuit{$ENDIF};
+{$ENDIF}
+{$IFDEF WINDOWS}
+uses
+  LCLIntf;
+function FlashWindow(hWnd: HWND; bInvert: LongBool): LongBool; stdcall;
+  external 'user32.dll' name 'FlashWindow';
+{$ENDIF}
+{$IFDEF LCLGtk3}
+uses
+  LazGtk3, Gtk3Widgets;
+{$ENDIF}
+{$IFDEF LCLGtk2}
+uses
+  Gtk2;
 {$ENDIF}
 
 constructor TfrmMain.Create(AOwner: TComponent);
@@ -391,21 +407,35 @@ begin
   n := 0;
   while (n < MAX_OPEN_PER_TICK) and InstanceServerPoll(p) do
   begin
+    if n = 0 then RaiseWindow; // la question CSV ne tombe pas sur une fenetre reduite
     FMgr.OpenFile(p);
     Inc(n);
   end;
-  if n > 0 then
-  begin
-    if not Visible then Show;
-    // reduite dans la barre des taches: BringToFront seul la laisse en bas.
-    // Restore rend l'etat d'avant (maximisee reste maximisee).
-    if WindowState = wsMinimized then Application.Restore;
-    {$IFDEF DARWIN}
-    // c'est un autre process qui a ouvert le fichier: personne n'a active l'app
-    NSApplication.sharedApplication.activateIgnoringOtherApps(True);
-    {$ENDIF}
-    BringToFront;
-  end;
+end;
+
+// fichier recu d'un autre process: on sort de la barre des taches, la sieste est finie
+procedure TfrmMain.RaiseWindow;
+begin
+  if not Visible then Show;
+  if WindowState = wsMinimized then Application.Restore;
+  {$IF defined(WINDOWS)}
+  // TForm.BringToFront remonte sans activer, decoratif. Celui de l'app fait le vrai SetForegroundWindow
+  Application.BringToFront;
+  if GetForegroundWindow <> Handle then FlashWindow(Handle, True);
+  {$ELSEIF defined(DARWIN)}
+  // Application.Restore = unhide: la fenetre reste a pourrir dans le Dock
+  if NSView(Handle).window.isMiniaturized then
+    NSView(Handle).window.deminiaturize(nil);
+  NSApplication.sharedApplication.activateIgnoringOtherApps(True);
+  NSView(Handle).window.makeKeyAndOrderFront(nil);
+  {$ELSEIF defined(LCLGtk3)}
+  // AppBringToFront envoie un timestamp 0 hors evenement, le WM le jette comme du spam
+  gtk_window_present(PGtkWindow(TGtk3Widget(Handle).Widget));
+  {$ELSEIF defined(LCLGtk2)}
+  gtk_window_present(PGtkWindow(Handle));
+  {$ELSE}
+  BringToFront;
+  {$ENDIF}
 end;
 
 procedure TfrmMain.OpenDropped(const APath: string);
@@ -691,6 +721,7 @@ begin
       d.HexView.Color := clEditorBg;
       d.HexView.Invalidate;
     end;
+    if d.CsvView <> nil then d.CsvView.RefreshTheme;
   end;
   {$IFNDEF RT_NATIVE_MENU}
   FMenuBar.RefreshTheme;
@@ -722,6 +753,10 @@ begin
   begin
     if (doc.HexView <> nil) and doc.HexView.CanFocus then
       doc.HexView.SetFocus;
+  end
+  else if doc.IsCsv then
+  begin
+    if doc.CsvView.CanFocus then doc.CsvView.SetFocus;
   end
   else if doc.View.Syn.CanFocus then
     doc.View.Syn.SetFocus;
@@ -857,12 +892,13 @@ var
 begin
   if FPanes[AIndex].Panel = nil then Exit;
   doc := FMgr.GroupDoc(AIndex);
-  if (doc <> nil) and doc.IsHex then
+  if (doc <> nil) and not doc.IsText then
   begin
     FPanes[AIndex].Map.Bind(nil);
     FPanes[AIndex].Bar.Bind(nil);
     FPanes[AIndex].Right.Visible := False;
-    doc.HexView.OnCaretMove := @HandleHexCaret;
+    if doc.IsHex then doc.HexView.OnCaretMove := @HandleHexCaret
+    else doc.CsvView.OnCaretMove := @HandleCsvCaret;
   end
   else if doc <> nil then
   begin
@@ -890,6 +926,7 @@ begin
   SyncSideOpenFiles;
   if FActions <> nil then
     FActions.UpdateFileItems;
+  FAppMenu.UpdateContext(FMgr.ActiveDoc);
   FFindBar.ActiveDocChanged;
   UpdatePaneBind(0);
   UpdatePaneBind(1);
@@ -905,6 +942,14 @@ begin
     FStatusBar.SetEncoding('Hexadecimal');
     FStatusBar.SetEol('');
     HandleHexCaret(doc.HexView);
+  end
+  else if (doc <> nil) and doc.IsCsv then
+  begin
+    FStatusBar.Bind(nil);
+    FStatusBar.SetFileType('CSV Table');
+    FStatusBar.SetEncoding(Encodings[doc.Encoding].Caption);
+    FStatusBar.SetEol(EolName(doc.Eol));
+    HandleCsvCaret(doc.CsvView);
   end
   else if doc <> nil then
   begin
@@ -935,6 +980,16 @@ begin
     [IntToHex(hv.CaretOfs, hv.OfsDigits), hv.FileSize]));
 end;
 
+procedure TfrmMain.HandleCsvCaret(Sender: TObject);
+var
+  cv: TCsvView;
+begin
+  if (FMgr.ActiveDoc = nil) or (FMgr.ActiveDoc.CsvView <> Sender) then Exit;
+  cv := Sender as TCsvView;
+  FStatusBar.SetLeftOverride(Format('Row %d / %d, Col %d',
+    [cv.CurRow, cv.DataRowCount, cv.CurCol]));
+end;
+
 procedure TfrmMain.HandleDocChanged(Sender: TObject);
 var
   doc: TDocument;
@@ -957,7 +1012,7 @@ begin
   // palette ouverte: sans ce court-circuit le KeyPreview mangerait Esc, F3, F9
   if (FPalette <> nil) and FPalette.Visible then Exit;
   v := nil;
-  if (FMgr.ActiveDoc <> nil) and not FMgr.ActiveDoc.IsHex then
+  if (FMgr.ActiveDoc <> nil) and FMgr.ActiveDoc.IsText then
     v := FMgr.ActiveDoc.View;
   // chord Ctrl+K: un modificateur seul ne le casse pas, toute autre touche si
   if FChordK then
@@ -1078,11 +1133,9 @@ begin
       VK_F9: begin FActions.EditSortLines(nil); Key := 0; end;
       VK_ESCAPE:
         begin
-          if FFindBar.Visible then
-            FFindBar.HideBar
-          else if v <> nil then
-            v.MultiClear;
-          Key := 0;
+          // table: Echap doit arriver a l'editeur de cellule, il annule la saisie
+          if FFindBar.Visible then begin FFindBar.HideBar; Key := 0; end
+          else if v <> nil then begin v.MultiClear; Key := 0; end;
         end;
     end;
 end;

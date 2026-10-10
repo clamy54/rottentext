@@ -88,7 +88,7 @@ begin
     f.Position := poMainFormCenter;
     f.Color := clAppBg;
     f.Width := 440;
-    f.Height := 470;
+    f.Height := 522;
 
     img := TImage.Create(f);
     img.Parent := f;
@@ -128,6 +128,10 @@ begin
     AddLabel(f, y, 'and JetBrains Mono NL, Nerd Fonts patched:', False);
     Inc(y, 22);
     AddLabel(f, y, 'https://www.nerdfonts.com/', True);
+    Inc(y, 30);
+    AddLabel(f, y, 'and Hack, Nerd Fonts patched:', False);
+    Inc(y, 22);
+    AddLabel(f, y, 'https://sourcefoundry.org/hack/', True);
 
     b := TThemedButton.Create(f);
     b.Parent := f;

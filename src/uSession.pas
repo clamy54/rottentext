@@ -20,6 +20,8 @@ type
     Enc: Integer;   // encodage au dernier quit (-1 = laisser la detection)
     Syntax: string; // nom du langage choisi ('' / 'Plain Text' = aucun)
     Hex: Boolean;   // fichier TEXTE force en vue hex a la main (Reopen > Hex)
+    Csv: Boolean;   // ouvert en table
+    CsvHeader: Boolean; // premiere ligne = en-tete
   end;
   TSession = record
     Entries: array of TSessEntry;
@@ -304,6 +306,8 @@ begin
         cur.Enc := JInt(e, 'enc', -1);
         cur.Syntax := JStr(e, 'syntax');
         cur.Hex := JInt(e, 'hex', 0) <> 0;
+        cur.Csv := JInt(e, 'csv', 0) <> 0;
+        cur.CsvHeader := JInt(e, 'csvHeader', 1) <> 0;
         // exactement UNE source: un chemin valide OU un tampon valide
         if cur.Path <> '' then
         begin
@@ -380,7 +384,7 @@ end;
 // untitled jamais touche: sans ce filtre les vierges s'accumulent a chaque cycle
 function DocIsBlank(D: TDocument): Boolean;
 begin
-  Result := D.Untitled and not D.Modified and not D.IsHex and
+  Result := D.Untitled and not D.Modified and D.IsText and
     (D.View.Syn.Lines.Count <= 1) and
     ((D.View.Syn.Lines.Count = 0) or (D.View.Syn.Lines[0] = ''));
 end;
@@ -569,7 +573,14 @@ begin
         if e = nil then Continue;
         e.Add('group', d.Group);
         e.Add('hex', Ord(d.IsHex));
-        if not d.IsHex then
+        e.Add('csv', Ord(d.IsCsv));
+        if d.IsCsv then
+        begin
+          e.Add('csvHeader', Ord(d.CsvView.HasHeader));
+          e.Add('caretX', d.CsvView.CurCol);
+          e.Add('caretY', d.CsvView.CurRow);
+        end
+        else if not d.IsHex then
         begin
           e.Add('caretX', d.View.Syn.CaretX);
           e.Add('caretY', d.View.Syn.CaretY);
@@ -658,6 +669,11 @@ var
   cx, cy, top: Integer;
 begin
   if D.IsHex then Exit;
+  if D.IsCsv then
+  begin
+    D.CsvView.GotoCell(E.CaretX, E.CaretY);
+    Exit;
+  end;
   cy := E.CaretY;
   if cy < 1 then cy := 1;
   if cy > D.View.Syn.Lines.Count then cy := D.View.Syn.Lines.Count;
@@ -705,7 +721,7 @@ begin
       if (g = 1) and not AMgr.Split then g := 0;
       AMgr.ActivateGroup(g);
       if S.Entries[i].Path <> '' then
-        d := AMgr.OpenFile(S.Entries[i].Path) // disparu depuis la sonde: nil
+        d := AMgr.OpenFile(S.Entries[i].Path, False) // disparu depuis la sonde: nil
       else
       begin
         if not ReadBuffer(S.Entries[i].Buf, content) then
@@ -730,6 +746,10 @@ begin
          (S.Entries[i].Enc >= 0) and (S.Entries[i].Enc <= High(Encodings)) and
          (d.IsHex or (d.Encoding <> S.Entries[i].Enc)) then
         AMgr.ReopenActiveWithEncoding(S.Entries[i].Enc);
+      if S.Entries[i].Csv and not d.IsCsv then
+        AMgr.ReopenActiveCsv;
+      if d.IsCsv then
+        d.CsvView.HasHeader := S.Entries[i].CsvHeader;
       RestoreCaret(d, S.Entries[i]);
       if not d.IsHex and (S.Entries[i].Syntax <> '') then
       begin

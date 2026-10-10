@@ -62,6 +62,20 @@ survive you closing the window by reflex at the end of a 14 hour shift.
 No regular expressions in find-and-replace. If you want regex search across a
 whole tree, you want a different tool and probably a change ticket.
 
+## The spreadsheet, sort of
+
+A `.csv` can open as a table instead of text: cells edited in place, rows and
+columns selected, moved, duplicated, deleted, sorted with a right-click on the
+header, found and replaced cell by cell, hashed or encoded like any other
+selection, with undo. It saves back to CSV with the delimiter, line endings
+and encoding it found, and nothing else. No formulas, no charts, no pivot
+tables: it is there for the export you have to patch before the import, not to
+replace the thing accounting uses. Multiplan nostalgics will feel right at
+home: the rotten looks are all there, the formulas are not, and the 64 KB
+stayed in 1982 with the rest of your career.
+
+![CSV table](doc/screenshot2.png)
+
 ## Getting it
 
 Prebuilt packages for Windows, Linux and macOS are on the
@@ -79,7 +93,7 @@ Linux build uses GTK3, which needs Lazarus trunk; the build script says so if
 yours is too old.
 
 The interface kit, the fonts (20 **Monaspace Frozen**, 4 **JetBrains Mono NL
-Nerd Font**) and the themes come from the
+Nerd Font**, 4 **Hack Nerd Font**) and the themes come from the
 [RottenUI](https://github.com/clamy54/rottenUI) submodule, so clone with
 `--recurse-submodules`, or run `git submodule update --init` afterwards.
 
@@ -106,7 +120,8 @@ than most manuals do.
 GPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 The binary embeds the **Monaspace** font family and **JetBrains Mono NL Nerd
-Font** (both SIL Open Font License 1.1) and the Tabler icons (MIT), and
+Font** (both SIL Open Font License 1.1), **Hack Nerd Font** (MIT and Bitstream
+Vera License) and the Tabler icons (MIT), and
 statically links RottenUI, the LCL, the Free Pascal RTL and SynEdit. Every
 third-party work
 that ends up in a build is inventoried in

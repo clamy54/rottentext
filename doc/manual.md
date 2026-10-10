@@ -50,12 +50,12 @@ For the three people who insist. You need:
 - **Lazarus** (tested with 4.8) and **FPC 3.2.2**.
 - Lazarus packages: `SynEdit`, `LCL`, `Printer4Lazarus` (`lazbuild` pulls the
   transitive dependencies on its own).
-- The **Monaspace Frozen** fonts in `fonts/`: 5 families times 4 styles, 20 TTF
-  files total, plus the 4 **JetBrains Mono NL Nerd Font Mono** styles. The build
-  compiles them into the binary as resources, so the final program carries its
-  own fonts and does not care what garbage is installed on the host. Get them
-  from the Monaspace and Nerd Fonts release archives. Yes, all twenty-four. No,
-  you cannot skip the italics.
+- The fonts come with the RottenUI submodule: **Monaspace Frozen**, 5 families
+  times 4 styles, 20 TTF files total, plus the 4 **JetBrains Mono NL Nerd Font
+  Mono** styles and the 4 **Hack Nerd Font Mono** styles. The build compiles
+  them into the binary as resources, so the final program carries its own fonts
+  and does not care what garbage is installed on the host. Clone with
+  `--recurse-submodules`, or run `git submodule update --init`.
 
 Then:
 
@@ -117,6 +117,27 @@ The part that opens files. Kept deliberately boring. Highlights:
   only learn once.
 - **Hex view** for binary files, opened automatically when a file looks binary, or
   on demand. Find and replace bytes, jump to an offset, overwrite in place.
+- **CSV table**: a `.csv` or `.tsv` can open as a rudimentary spreadsheet. By
+  default RottenText asks; *View › CSV Table* makes the answer permanent either
+  way, and *File › Reopen with Encoding › CSV Table* or *Plain Text* switches an
+  open tab. Cells are edited in place (Enter validates and moves down, Escape
+  gives up), Find and Replace work cell by cell, and a cell can be cut, copied,
+  pasted or cleared. Whole rows and columns: left-click a row number or a column
+  header to select (Shift or drag to extend, Shift+Space and Ctrl+Space from the
+  keyboard), then Delete, Insert, Alt+arrows to move, Ctrl+C/X/V to copy, cut
+  and paste them elsewhere in the table, and *Edit › Table* for the rest
+  (duplicate, insert above/below/left/right, sort). Right-click a column header
+  to sort the rows by it, numerically when the whole column is numeric; a
+  second right-click reverses. Column names come from the first row only when
+  it looks like one (text above numbers); otherwise the columns are called
+  C1, C2, C3 and every row is data. *View › CSV Table › First Row is Header*
+  overrides the guess. Undo and Redo work on the table. Saving writes CSV back
+  with the file's own delimiter, line endings and encoding; a field keeps its
+  quotes if it had them, and an edited field is quoted only when it needs it.
+  Convert Case, Hash Selection, HMAC, Encode / Decode and Escape apply to the
+  selected cells, rows or columns; macros record the grid keys and the values
+  you validate in cells, not mouse clicks. Everything that only makes sense for
+  text is greyed out while a table tab is active. No formulas.
 - **Syntax highlighting** for 40-odd languages, loaded from hand-written grammars.
   Big files skip automatic highlighting on purpose, because tokenizing a 156 MB
   log to make it pretty is not a feature, it is a denial of service against
@@ -125,7 +146,8 @@ The part that opens files. Kept deliberately boring. Highlights:
   menu bar follows the theme. Your own themes are JSON files dropped in a
   `themes` folder inside the configuration directory.
 - **Editor font** (`View > Font...`): family among the embedded ones (the five
-  Monaspace flavours and JetBrains Mono Nerd Font) and size. Saved in the
+  Monaspace flavours, JetBrains Mono Nerd Font and Hack Nerd Font) and size.
+  Saved in the
   preferences, wins over the theme's font; "Theme Default" hands control back
   to the theme.
 - **Sidebar** with an open-files list and a folder tree ("Open Folder"). The tree
@@ -457,5 +479,6 @@ Developed by Cyril LAMY.
 
 It uses the Monaspace font family: https://monaspace.githubnext.com/
 and JetBrains Mono NL, Nerd Fonts patched: https://www.nerdfonts.com/
+and Hack, Nerd Fonts patched: https://sourcefoundry.org/hack/
 
 Source and releases: https://github.com/clamy54/rottentext

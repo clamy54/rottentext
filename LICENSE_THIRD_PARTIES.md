@@ -74,6 +74,36 @@ alternative editor font in `View > Font...`.
   `licenses/OFL-1.1-JetBrainsMono.txt` in any redistribution, the fonts stay
   under the OFL.
 
+## 1c. Hack, Nerd Fonts patched — MIT and Bitstream Vera License
+
+| | |
+|---|---|
+| Upstream | <https://github.com/source-foundry/Hack> (font), <https://github.com/ryanoasis/nerd-fonts> (patch) |
+| Copyright | Copyright (c) 2018 Source Foundry Authors; Bitstream Vera Sans Mono Copyright (c) 2003 by Bitstream, Inc. — Reserved Font Names "Bitstream" and "Vera" |
+| License | MIT License (the Hack work) and Bitstream Vera License (the Vera glyphs it derives from) |
+| Full text | [`licenses/MIT-BitstreamVera-Hack.txt`](licenses/MIT-BitstreamVera-Hack.txt) |
+
+**Where it is used:** the 4 TTF files
+`HackNerdFontMono-{Regular,Bold,Italic,BoldItalic}.ttf` are compiled into the
+executable by RottenUI the same way as Monaspace, and offered as an alternative
+editor font in `View > Font...`.
+
+**Compliance notes:**
+
+- Hack derives from DejaVu Sans Mono, itself derived from Bitstream Vera Sans
+  Mono: the Hack work is under the MIT License, the Vera part stays under the
+  Bitstream Vera License, and both notices must accompany copies. That is what
+  `licenses/MIT-BitstreamVera-Hack.txt` is for. **Keep it in any
+  redistribution**, including binary-only ones.
+- The shipped files are the Nerd Fonts build (family name `Hack Nerd Font
+  Mono`): a modified version already renamed by the Nerd Fonts project, with
+  neither "Bitstream" nor "Vera" in the name as the Vera licence requires of
+  modified versions. RottenText does not modify them further.
+- The added icon glyphs come from third-party icon sets under their own
+  licenses, see the Nerd Fonts repository.
+- The Vera licence forbids selling the font software by itself; it allows it
+  as part of a larger software package, which is the case here.
+
 ## 2. Lazarus LCL (Lazarus Component Library) — modified LGPL
 
 | | |
@@ -170,7 +200,7 @@ or reworked.
 same author: themes, fonts, menu bar, tab bar, dialogs and message boxes. It is
 statically linked. Same licence as RottenText itself, so there is nothing to
 reconcile; it is listed here because it is a separate repository, and because
-it is what brings sections 1, 1b and 8 into the binary.
+it is what brings sections 1, 1b, 1c and 8 into the binary.
 
 ## 8. Tabler Icons — MIT
 
@@ -193,10 +223,11 @@ and permission notice to accompany copies: that is what
 
 If you redistribute RottenText (source **or** binary), you must at least:
 
-1. Keep `licenses/OFL-1.1-Monaspace.txt` and
-   `licenses/OFL-1.1-JetBrainsMono.txt` alongside it — the binary embeds the
-   Monaspace and JetBrains Mono fonts, and the OFL requires its text to be
-   distributed with them. The fonts stay under the OFL; they are not relicensed
+1. Keep `licenses/OFL-1.1-Monaspace.txt`, `licenses/OFL-1.1-JetBrainsMono.txt`
+   and `licenses/MIT-BitstreamVera-Hack.txt` alongside it — the binary embeds
+   the Monaspace, JetBrains Mono and Hack fonts, and the OFL, the MIT License
+   and the Bitstream Vera License all require their text to be distributed
+   with them. The fonts stay under their own licenses; they are not relicensed
    by being embedded.
 2. Keep this file and [`LICENSE`](LICENSE) (the GPL-3 terms of RottenText
    itself), and `licenses/MIT-Tabler.txt` for the embedded icons.
@@ -204,4 +235,4 @@ If you redistribute RottenText (source **or** binary), you must at least:
    redistribute the source.
 4. Do not name a modified version of the fonts with a Reserved Font Name
    ("Monaspace", "Argon", "Neon", "Xenon", "Radon", "Krypton",
-   "JetBrains Mono").
+   "JetBrains Mono", "Bitstream", "Vera").

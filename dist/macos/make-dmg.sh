@@ -39,14 +39,15 @@ cp -R "$app" "$stage/"
 ln -s /Applications "$stage/Applications"
 
 # les licences voyagent avec le .dmg : les polices Monaspace sont compilees DANS
-# le binaire (ressources), idem JetBrains Mono; l'OFL impose que son texte
-# accompagne la distribution.
+# le binaire (ressources), idem JetBrains Mono et Hack; l'OFL, le MIT et la
+# Bitstream Vera imposent que leur texte accompagne la distribution.
 # Regroupees dans un dossier pour ne pas encombrer la fenetre d'installation.
 mkdir -p "$stage/Licenses"
 cp "$root/LICENSE" "$stage/Licenses/LICENSE.txt"
 cp "$root/LICENSE_THIRD_PARTIES.md" "$stage/Licenses/"
 cp "$root/licenses/OFL-1.1-Monaspace.txt" "$stage/Licenses/"
 cp "$root/licenses/OFL-1.1-JetBrainsMono.txt" "$stage/Licenses/"
+cp "$root/licenses/MIT-BitstreamVera-Hack.txt" "$stage/Licenses/"
 cp "$root/licenses/MIT-Tabler.txt" "$stage/Licenses/"
 
 # image lecture/ecriture d'abord : la mise en page (positions des icones, taille

@@ -9,7 +9,7 @@ uses
   PrintersDlgs,
   Clipbrd, LazUTF8, SynEdit, SynEditKeyCmds, SynMacroRecorder,
   uDocumentManager, uDocument, uEditorView, uHighlight, uFindBar, uPrint,
-  uHexView, uTextOps, uRecent, uThemeLoad, uSettings, uOps, uSecretPrompt, uLdap,
+  uHexView, uCsvView, uTextOps, uRecent, uThemeLoad, uSettings, uOps, uSecretPrompt, uLdap,
   uLdif, uLdifDlg, uNet, uJwt, uExtract, uTimeConv, uProto, uNmap, uHttp,
   uDiffView, uYaml, uKube, uHelm, uEnv, uX509, uCompose, uQuadlet, uTf, uIni,
   uToml, uEol, uCron, uLogTools, uMailTrace, uFontDlg, DateUtils;
@@ -24,6 +24,11 @@ type
     FMacroPlayItem: TMenuItem;
     FSaveItem: TMenuItem;
     FSaveEncItem: TMenuItem;
+    FCsvHeaderItem: TMenuItem;
+    FTableMenu: TMenuItem;
+    // parametres de la transformation en cours sur les cellules d'une table
+    FCsvCase, FCsvTag, FCsvHmac: Integer;
+    FCsvKey: string;
     FSideBarItem: TMenuItem;
     FSplitItem: TMenuItem;
     FOnMacroStateChange: TNotifyEvent;
@@ -32,6 +37,10 @@ type
     FOnThemeChanged: TNotifyEvent;
     FOnCommandPalette: TNotifyEvent;
     function Ed: TSynEdit;
+    function CsvCaseFn(const S: string): string;
+    function CsvTagFn(const S: string): string;
+    function CsvHmacFn(const S: string): string;
+    function CsvTransform(AFn: TCsvCellFn): Boolean; // False = pas une table
     // False = l'utilisateur a annule
     function ConfirmLargeText(AOnSel: Boolean): Boolean;
     function ConfirmLargeFile(const APath: string): Boolean;
@@ -74,6 +83,13 @@ type
     procedure FileReopenWithEncoding(Sender: TObject);
     procedure FileReopenHex(Sender: TObject);
     procedure FileSaveHex(Sender: TObject);
+    procedure FileReopenCsv(Sender: TObject);
+    procedure FileReopenText(Sender: TObject);
+    procedure ViewCsvHeader(Sender: TObject);
+    procedure ViewCsvOpen(Sender: TObject);  // Tag = RTCsvOpen
+    procedure SetCsvHeaderItem(AItem: TMenuItem);
+    procedure SetTableMenu(AItem: TMenuItem);
+    procedure TableOp(Sender: TObject); // Tag = operation, voir uAppMenu
     procedure SetFileItems(ASaveItem, ASaveEncItem: TMenuItem);
     procedure UpdateFileItems;
     // Edit
@@ -251,10 +267,18 @@ procedure TAppActions.ReplaceAll(Sender: TObject);  begin if FFindBar <> nil the
 
 function TAppActions.Ed: TSynEdit;
 begin
-  // doc hex: le SynEdit existe mais est cache et vide, une action texte qui le
-  // viserait marquerait le doc modifie pour rien
-  if (FMgr.ActiveDoc <> nil) and not FMgr.ActiveDoc.IsHex then
+  // doc hex ou table: le SynEdit existe mais est cache et vide, une action
+  // texte qui le viserait marquerait le doc modifie pour rien
+  if (FMgr.ActiveDoc <> nil) and FMgr.ActiveDoc.IsText then
     Result := FMgr.ActiveDoc.View.Syn
+  else
+    Result := nil;
+end;
+
+function CsvV(AMgr: TDocumentManager): TCsvView;
+begin
+  if (AMgr.ActiveDoc <> nil) and AMgr.ActiveDoc.IsCsv then
+    Result := AMgr.ActiveDoc.CsvView
   else
     Result := nil;
 end;
@@ -415,7 +439,7 @@ var
   doc: TDocument;
 begin
   doc := FMgr.ActiveDoc;
-  if (doc = nil) or doc.IsHex then Exit;
+  if (doc = nil) or not doc.IsText then Exit;
   // doc capture dans un local puis tenu en travers du dialogue natif: relire
   // ActiveDoc apres le dialogue peut viser un AUTRE onglet
   BeginActionModal;
@@ -479,6 +503,67 @@ begin
     FMgr.SaveActive;
 end;
 
+procedure TAppActions.FileReopenCsv(Sender: TObject);
+begin
+  FMgr.ReopenActiveCsv;
+end;
+
+procedure TAppActions.FileReopenText(Sender: TObject);
+begin
+  FMgr.ReopenActiveText;
+end;
+
+procedure TAppActions.SetCsvHeaderItem(AItem: TMenuItem);
+begin
+  FCsvHeaderItem := AItem;
+end;
+
+procedure TAppActions.ViewCsvHeader(Sender: TObject);
+var
+  cv: TCsvView;
+begin
+  cv := CsvV(FMgr);
+  if cv = nil then Exit;
+  cv.HasHeader := not cv.HasHeader;
+  UpdateFileItems;
+end;
+
+procedure TAppActions.SetTableMenu(AItem: TMenuItem);
+begin
+  FTableMenu := AItem;
+end;
+
+procedure TAppActions.TableOp(Sender: TObject);
+var
+  cv: TCsvView;
+begin
+  cv := CsvV(FMgr);
+  if (cv = nil) or not (Sender is TMenuItem) then Exit;
+  if cv.CanFocus then cv.SetFocus;
+  case TMenuItem(Sender).Tag of
+    1: cv.SelectRow;
+    2: cv.SelectCol;
+    3: cv.InsertRows(False);
+    4: cv.InsertRows(True);
+    5: cv.InsertCols(False);
+    6: cv.InsertCols(True);
+    7: cv.DuplicateSel;
+    8: cv.DeleteSel;
+    9: cv.MoveSel(-1);
+    10: cv.MoveSel(1);
+    11: cv.SortCurrent(False);
+    12: cv.SortCurrent(True);
+  end;
+end;
+
+procedure TAppActions.ViewCsvOpen(Sender: TObject);
+begin
+  if not (Sender is TMenuItem) then Exit;
+  RTCsvOpen := TMenuItem(Sender).Tag;
+  TMenuItem(Sender).Checked := True;
+  SettingsSave;
+end;
+
 // '1A2B', '0x1A2B' ou '$1A2B'; toujours lu en HEXA
 function ParseHexOffset(S: string; out AOfs: Int64): Boolean;
 begin
@@ -523,6 +608,13 @@ begin
   ena := (FMgr.ActiveDoc = nil) or not FMgr.ActiveDoc.ReadOnly;
   if FSaveItem <> nil then FSaveItem.Enabled := ena;
   if FSaveEncItem <> nil then FSaveEncItem.Enabled := ena;
+  if FTableMenu <> nil then FTableMenu.Enabled := CsvV(FMgr) <> nil;
+  MacroStateChanged(nil); // libelle et etat selon l'onglet (grille ou SynEdit)
+  if FCsvHeaderItem <> nil then
+  begin
+    FCsvHeaderItem.Enabled := CsvV(FMgr) <> nil;
+    FCsvHeaderItem.Checked := (CsvV(FMgr) <> nil) and CsvV(FMgr).HasHeader;
+  end;
 end;
 
 // le menu natif mac tire Undo/Cut/Copy/Paste/Select All par equivalent
@@ -535,26 +627,46 @@ begin
     Result := TCustomEdit(Screen.ActiveControl);
 end;
 
-procedure TAppActions.EditUndo(Sender: TObject);
+// l'editeur de cellule (un TCustomEdit) reste le controle actif meme cache:
+// un Ctrl+Z destine a la table partirait dans le vide
+function CsvEditorFocused(AMgr: TDocumentManager): Boolean;
 begin
-  if FocusedEdit <> nil then FocusedEdit.Undo else Cmd(ecUndo);
+  Result := (CsvV(AMgr) <> nil) and (Screen.ActiveControl <> nil) and
+    (Screen.ActiveControl.Parent = CsvV(AMgr));
 end;
 
-procedure TAppActions.EditRedo(Sender: TObject);   begin Cmd(ecRedo); end;
+procedure TAppActions.EditUndo(Sender: TObject);
+begin
+  if CsvEditorFocused(FMgr) then CsvV(FMgr).Undo
+  else if FocusedEdit <> nil then FocusedEdit.Undo
+  else if CsvV(FMgr) <> nil then CsvV(FMgr).Undo
+  else Cmd(ecUndo);
+end;
+
+procedure TAppActions.EditRedo(Sender: TObject);
+begin
+  if CsvV(FMgr) <> nil then CsvV(FMgr).Redo else Cmd(ecRedo);
+end;
 
 procedure TAppActions.EditCut(Sender: TObject);
 begin
-  if FocusedEdit <> nil then FocusedEdit.CutToClipboard else Cmd(ecCut);
+  if FocusedEdit <> nil then FocusedEdit.CutToClipboard
+  else if CsvV(FMgr) <> nil then CsvV(FMgr).CutSel
+  else Cmd(ecCut);
 end;
 
 procedure TAppActions.EditCopy(Sender: TObject);
 begin
-  if FocusedEdit <> nil then FocusedEdit.CopyToClipboard else Cmd(ecCopy);
+  if FocusedEdit <> nil then FocusedEdit.CopyToClipboard
+  else if CsvV(FMgr) <> nil then CsvV(FMgr).CopySel
+  else Cmd(ecCopy);
 end;
 
 procedure TAppActions.EditPaste(Sender: TObject);
 begin
-  if FocusedEdit <> nil then FocusedEdit.PasteFromClipboard else Cmd(ecPaste);
+  if FocusedEdit <> nil then FocusedEdit.PasteFromClipboard
+  else if CsvV(FMgr) <> nil then CsvV(FMgr).PasteSel
+  else Cmd(ecPaste);
 end;
 procedure TAppActions.EditIndent(Sender: TObject); begin Cmd(ecBlockIndent); end;
 procedure TAppActions.EditUnindent(Sender: TObject);begin Cmd(ecBlockUnindent); end;
@@ -775,11 +887,53 @@ begin
 end;
 
 // 0 = upper, 1 = lower, 2 = title, 3 = swap. Sans selection: mot courant.
+function HashKindFromTag(ATag: Integer): TOpsHash; forward;
+function ToolTransformByTag(ATag: Integer; const S: string): string; forward;
+
+function TAppActions.CsvCaseFn(const S: string): string;
+begin
+  case FCsvCase of
+    0: Result := UTF8UpperCase(S);
+    1: Result := UTF8LowerCase(S);
+    2: Result := UTF8TitleCase(S);
+    else Result := UTF8SwapCase(S);
+  end;
+end;
+
+function TAppActions.CsvTagFn(const S: string): string;
+begin
+  Result := ToolTransformByTag(FCsvTag, S);
+end;
+
+function TAppActions.CsvHmacFn(const S: string): string;
+begin
+  Result := HMACHex(HashKindFromTag(FCsvHmac), FCsvKey, S);
+end;
+
+// table: la transformation s'applique aux cellules selectionnees, pas au SynEdit cache
+function TAppActions.CsvTransform(AFn: TCsvCellFn): Boolean;
+var
+  cv: TCsvView;
+begin
+  cv := CsvV(FMgr);
+  Result := cv <> nil;
+  if not Result then Exit;
+  if cv.CanFocus then cv.SetFocus;
+  try
+    cv.TransformSel(AFn);
+  except
+    on ex: Exception do
+      RtMessageDlg('RottenText', ex.Message, mtError, [mbOK], 0);
+  end;
+end;
+
 procedure TAppActions.ApplyCase(AMode: Integer);
 var
   e: TSynEdit;
   s, r: string;
 begin
+  FCsvCase := AMode;
+  if CsvTransform(@CsvCaseFn) then Exit;
   e := Ed;
   if e = nil then Exit;
   if e.SelAvail and not ConfirmLargeText(True) then Exit;
@@ -1200,28 +1354,52 @@ var
   i: Integer;
 begin
   Result := -1;
+  for i := 0 to FMgr.Count - 1 do
+    if FMgr.Docs[i].IsCsv and FMgr.Docs[i].CsvView.MacroRecording then Exit(i);
   if not (FRec.State in [msRecording, msPaused]) then Exit;
   for i := 0 to FMgr.Count - 1 do
     if FMgr.Docs[i].View.Syn = FRec.CurrentEditor then Exit(i);
 end;
 
+// onglet table: c'est la macro de la grille qui compte, pas celle du SynEdit
 procedure TAppActions.MacroStateChanged(Sender: TObject);
+var
+  cv: TCsvView;
+  rec, play: Boolean;
 begin
+  cv := CsvV(FMgr);
+  if cv <> nil then
+  begin
+    rec := cv.MacroRecording;
+    play := (not rec) and not cv.MacroEmpty;
+  end
+  else
+  begin
+    rec := FRec.State in [msRecording, msPaused];
+    play := (FRec.State = msStopped) and not FRec.IsEmpty;
+  end;
   if FMacroRecordItem <> nil then
   begin
-    if FRec.State in [msRecording, msPaused] then
-      FMacroRecordItem.Caption := 'Stop Recording Macro'
-    else
-      FMacroRecordItem.Caption := 'Record Macro';
+    if rec then FMacroRecordItem.Caption := 'Stop Recording Macro'
+    else FMacroRecordItem.Caption := 'Record Macro';
   end;
-  if FMacroPlayItem <> nil then
-    FMacroPlayItem.Enabled := (FRec.State = msStopped) and not FRec.IsEmpty;
+  if FMacroPlayItem <> nil then FMacroPlayItem.Enabled := play;
   if Assigned(FOnMacroStateChange) then
     FOnMacroStateChange(Self);
 end;
 
 procedure TAppActions.MacroToggleRecord(Sender: TObject);
+var
+  cv: TCsvView;
 begin
+  cv := CsvV(FMgr);
+  if cv <> nil then
+  begin
+    cv.OnMacroChange := @MacroStateChanged;
+    if cv.CanFocus then cv.SetFocus;
+    if cv.MacroRecording then cv.MacroStop else cv.MacroStart;
+    Exit;
+  end;
   case FRec.State of
     msRecording, msPaused: FRec.Stop;
     msStopped:
@@ -1236,7 +1414,16 @@ begin
 end;
 
 procedure TAppActions.MacroPlayback(Sender: TObject);
+var
+  cv: TCsvView;
 begin
+  cv := CsvV(FMgr);
+  if cv <> nil then
+  begin
+    if cv.CanFocus then cv.SetFocus;
+    cv.MacroPlay;
+    Exit;
+  end;
   if (FRec.State = msStopped) and (not FRec.IsEmpty) and (Ed <> nil) then
   begin
     if Ed.CanFocus then Ed.SetFocus;
@@ -1294,8 +1481,11 @@ var
   tag, y: Integer;
   onLine: Boolean;
 begin
+  if not (Sender is TMenuItem) then Exit;
+  FCsvTag := TMenuItem(Sender).Tag;
+  if CsvTransform(@CsvTagFn) then Exit;
   e := Ed;
-  if (e = nil) or not (Sender is TMenuItem) then Exit;
+  if e = nil then Exit;
   tag := TMenuItem(Sender).Tag;
   if e.SelAvail and not ConfirmLargeText(True) then Exit;
   if e.CanFocus then e.SetFocus;
@@ -1372,8 +1562,21 @@ var
   y: Integer;
   onLine: Boolean;
 begin
+  if not (Sender is TMenuItem) then Exit;
+  if CsvV(FMgr) <> nil then
+  begin
+    FCsvKey := '';
+    if not AskSecret('HMAC key', 'Secret key:', FCsvKey) then Exit;
+    FCsvHmac := TMenuItem(Sender).Tag;
+    try
+      CsvTransform(@CsvHmacFn);
+    finally
+      WipeSecret(FCsvKey);
+    end;
+    Exit;
+  end;
   e := Ed;
-  if (e = nil) or not (Sender is TMenuItem) then Exit;
+  if e = nil then Exit;
   if e.SelAvail and not ConfirmLargeText(True) then Exit;
   if e.SelAvail then
   begin

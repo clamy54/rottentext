@@ -131,6 +131,14 @@ if TargetOS = &apos;darwin&apos; then
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/uCsv.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/uCsvView.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/uStatusBar.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

@@ -52,13 +52,13 @@ Pour les trois personnes qui insistent. Il te faut :
 - **Lazarus** (testé avec la 4.8) et **FPC 3.2.2**.
 - Les paquets Lazarus : `SynEdit`, `LCL`, `Printer4Lazarus` (`lazbuild` tire les
   dépendances transitives tout seul).
-- Les polices **Monaspace Frozen** dans `fonts/` : 5 familles fois 4 styles, 20
-  fichiers TTF au total, plus les 4 styles de **JetBrains Mono NL Nerd Font
+- Les polices viennent avec le sous-module RottenUI : **Monaspace Frozen**, 5
+  familles fois 4 styles, 20 fichiers TTF au total, plus les 4 styles de
+  **JetBrains Mono NL Nerd Font Mono** et les 4 styles de **Hack Nerd Font
   Mono**. Le build les compile dans le binaire sous forme de ressources, donc le
   programme final embarque ses propres polices et se moque de ce qui traîne
-  d'installé sur l'hôte. Récupère-les depuis les archives de release de Monaspace
-  et de Nerd Fonts. Oui, les vingt-quatre. Non, tu ne peux pas sauter les
-  italiques.
+  d'installé sur l'hôte. Clone avec `--recurse-submodules`, ou lance
+  `git submodule update --init`.
 
 Ensuite :
 
@@ -123,6 +123,30 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
   décalent pas. Et si tu fais ça sur un Makefile, il te demandera confirmation,
   parce qu'une recette de Makefile exige une vraie tabulation et que la convertir
   la casserait en silence. C'est le genre de détail qu'on n'apprend qu'une fois.
+- **Table CSV** : un `.csv` ou `.tsv` peut s'ouvrir en tableur rudimentaire. Par
+  défaut RottenText pose la question ; *View › CSV Table* rend la réponse
+  définitive dans un sens ou dans l'autre, et *File › Reopen with Encoding › CSV
+  Table* ou *Plain Text* bascule un onglet déjà ouvert. Les cellules s'éditent sur
+  place (Entrée valide et descend, Échap renonce), Find et Replace travaillent
+  cellule par cellule, et une cellule se coupe, se copie, se colle ou se vide.
+  Lignes et colonnes entières : clic gauche sur un numéro de ligne ou une tête de
+  colonne pour sélectionner (Maj ou glisser pour étendre, Maj+Espace et
+  Ctrl+Espace au clavier), puis Suppr, Inser, Alt+flèches pour déplacer, Ctrl+C/X/V
+  pour les copier, couper et coller ailleurs dans la table, et *Edit › Table* pour
+  le reste (dupliquer, insérer au-dessus, en dessous, à gauche, à droite, trier).
+  Clic droit sur une tête de colonne trie les lignes selon elle, en numérique
+  quand toute la colonne l'est ; un second clic droit inverse. Les noms de
+  colonnes viennent de la première ligne seulement si elle y ressemble (du texte
+  au-dessus de nombres) ; sinon les colonnes s'appellent C1, C2, C3 et chaque
+  ligne est une donnée. *View › CSV Table › First Row is Header* corrige le pari.
+  Undo et Redo fonctionnent sur la table. La sauvegarde réécrit du CSV avec le
+  séparateur, les fins de ligne et l'encodage du fichier ; un champ garde ses
+  guillemets s'il en avait, un champ édité n'en reçoit que si nécessaire. Convert
+  Case, Hash Selection, HMAC, Encode / Decode et Escape s'appliquent aux cellules,
+  lignes ou colonnes sélectionnées ; les macros enregistrent les touches de la
+  grille et les valeurs validées dans les cellules, pas les clics. Tout ce qui n'a
+  de sens que pour du texte est grisé tant qu'un onglet table est actif. Pas de
+  formules.
 - **Vue hexadécimale** pour les fichiers binaires, ouverte automatiquement quand un
   fichier a l'air binaire, ou à la demande. Rechercher et remplacer des octets,
   sauter à un offset, écraser sur place.
@@ -134,7 +158,8 @@ La partie qui ouvre des fichiers. Volontairement ennuyeuse. Les grandes lignes :
   de menu suit le thème. Tes propres thèmes sont des fichiers JSON déposés dans un
   dossier `themes` du répertoire de configuration.
 - **Police de l'éditeur** (`View > Font...`) : famille parmi les polices
-  embarquées (les cinq Monaspace et JetBrains Mono Nerd Font) et taille.
+  embarquées (les cinq Monaspace, JetBrains Mono Nerd Font et Hack Nerd Font) et
+  taille.
   Sauvegardée dans les préférences, prime sur la police du thème ; "Theme
   Default" rend la main au thème.
 - **Barre latérale** avec une liste des fichiers ouverts et une arborescence de
@@ -484,5 +509,6 @@ Développé par Cyril LAMY.
 
 Il utilise la famille de polices Monaspace : https://monaspace.githubnext.com/
 et JetBrains Mono NL, patchée Nerd Fonts : https://www.nerdfonts.com/
+et Hack, patchée Nerd Fonts : https://sourcefoundry.org/hack/
 
 Sources et releases : https://github.com/clamy54/rottentext
