@@ -76,6 +76,19 @@ stayed in 1982 with the rest of your career.
 
 ![CSV table](doc/screenshot2.png)
 
+## The hex view, for when text was a lie
+
+A file that is not text opens as hex, and any file can be reopened that way.
+Offset, bytes, ASCII, the usual three columns. Overwrite bytes in place,
+search for a byte sequence or a string, jump to an offset, replace with
+something of the same length, because this is a hex editor and not a
+word processor. Edits stay in memory until you save, so the firmware image,
+the corrupted PDF or the config of that appliance nobody dares to reboot keeps
+its chances. It will not disassemble anything, and it will not fix your
+backups either, mostly because you do not have any.
+
+![Hex view](doc/screenshot3.png)
+
 ## Getting it
 
 Prebuilt packages for Windows, Linux and macOS are on the
